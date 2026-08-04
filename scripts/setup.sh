@@ -271,7 +271,7 @@ if [ -z "$CLOUDFLARE_TOKEN" ] || [ "$CLOUDFLARE_TOKEN" = "placeholder_replace_wi
         # Write token directly into the gitignored rendered docker env file
         # so cloudflared works immediately. Best-effort SOPS encryption below.
         mkdir -p "$BASE_DIR/.secrets-rendered/production"
-        printf 'CLOUDFLARED_TUNNEL_TOKEN=%s\n' "$CLOUDFLARE_TOKEN" > "$BASE_DIR/.secrets-rendered/production/cloudflare.env.docker"
+        printf 'TUNNEL_TOKEN=%s\n' "$CLOUDFLARE_TOKEN" > "$BASE_DIR/.secrets-rendered/production/cloudflare.env.docker"
         chmod 0600 "$BASE_DIR/.secrets-rendered/production/cloudflare.env.docker"
 
         # Best-effort: also store in the SOPS secret so it survives re-renders

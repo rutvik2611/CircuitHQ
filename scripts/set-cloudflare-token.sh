@@ -33,7 +33,7 @@ fi
 # 1. Write to gitignored rendered docker env file (guaranteed way cloudflared reads it)
 RENDERED_DIR="$BASE_DIR/.secrets-rendered/production"
 mkdir -p "$RENDERED_DIR"
-printf 'CLOUDFLARED_TUNNEL_TOKEN=%s\n' "$TOKEN" > "$RENDERED_DIR/cloudflare.env.docker"
+printf 'TUNNEL_TOKEN=%s\n' "$TOKEN" > "$RENDERED_DIR/cloudflare.env.docker"
 chmod 0600 "$RENDERED_DIR/cloudflare.env.docker"
 echo "✅ Token written to $RENDERED_DIR/cloudflare.env.docker (0600)"
 

@@ -20,6 +20,12 @@ services:
     container_name: circuithq-cloudflared
     restart: unless-stopped
 
+    # Start the tunnel with the token from the rendered env file
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+
     networks:
       - circuithq-proxy
 
@@ -37,7 +43,6 @@ services:
     environment:
       - TUNNEL_METRICS=0.0.0.0:2000
       - TUNNEL_URL=http://traefik:80
-      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN:-}
 
     # Expose metrics port to monitoring network (uncomment when monitoring stack exists)
     # ports:

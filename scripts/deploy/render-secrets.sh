@@ -99,7 +99,7 @@ render_dir() {
           val="${val%\"}"; val="${val#\"}"
           if [ -n "${val:-}" ]; then
             case "$key" in
-              tunnel_token) printf 'CLOUDFLARED_TUNNEL_TOKEN=%s\n' "$val" >> "$cf_env" ;;
+              tunnel_token) printf 'TUNNEL_TOKEN=%s\n' "$val" >> "$cf_env" ;;
               api_token)    printf 'CLOUDFLARE_API_TOKEN=%s\n' "$val" >> "$cf_env" ;;
             esac
           fi
