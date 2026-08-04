@@ -67,7 +67,7 @@ services:
 
       # SOPS-decrypted secrets (mounted at runtime by render-secrets.sh)
       - type: bind
-        source: /etc/circuithq/secrets/authelia.env
+        source: ../../.secrets-rendered/production/authelia.env
         target: /config/secrets.env
         read_only: true
 

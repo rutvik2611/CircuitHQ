@@ -1,0 +1,51 @@
+# CircuitHQ — Laptop Production Configuration
+# =============================================
+# Environment-specific non-secret configuration for the M3 Mac laptop
+# deployment target. These values are referenced by the deploy-laptop
+# workflow (.github/workflows/deploy-laptop.yml) and deploy scripts.
+#
+# This is NOT a secrets file — use SOPS-encrypted secrets/ for that.
+
+deploy:
+  target: localhost
+  runner: self-hosted
+  project_dir: /Users/rutvik2611/Projects/CircuitHQ
+
+  # Preflight overrides for laptop environment
+  preflight:
+    required_networks:
+      - circuithq-proxy
+      - circuithq-monitoring
+      - circuithq-security
+      - circuithq-public
+    required_volumes:
+      - circuithq-traefik-acme
+      - circuithq-redis-data
+      - circuithq-prometheus-data
+      - circuithq-grafana-data
+      - circuithq-loki-data
+      - circuithq-uptime-kuma-data
+    disk_threshold_pct: 85
+
+  # Default stacks to deploy in order
+  stacks:
+    - proxy
+    - auth
+    - monitoring
+    - logging
+
+  # Backup configuration
+  backup:
+    pre_deploy: true
+    restic_env: .secrets-rendered/production/restic.env
+
+  # Release metadata location
+  releases_dir: releases/
+
+  # macOS-specific notes
+  macos:
+    docker_runtime: OrbStack  # or Docker Desktop, Colima
+    docker_socket: /var/run/docker.sock
+    host_domain: localhost
+    tailscale_hostname: circuithq-laptop
+    arch: arm64

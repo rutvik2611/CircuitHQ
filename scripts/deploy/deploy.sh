@@ -16,7 +16,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 GIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"

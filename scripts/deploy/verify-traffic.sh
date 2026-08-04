@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VERBOSE=false
 [ "${1:-}" = "--verbose" ] && VERBOSE=true
 

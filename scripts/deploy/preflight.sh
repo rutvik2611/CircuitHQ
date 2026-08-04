@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STRICT=false
 [ "${1:-}" = "--strict" ] && STRICT=true
 

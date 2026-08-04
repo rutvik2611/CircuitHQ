@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VERBOSE=false
 [ "${1:-}" = "--verbose" ] && VERBOSE=true
 
@@ -19,26 +19,27 @@ ERRORS=0
 echo "=== CircuitHQ Health Check ==="
 echo ""
 
-# ─── Container status ──────────────────────────────────────────────
+# ─── Container status (name:description pairs) ─────────────────────
 echo "📋 Container status:"
-declare -A CONTAINERS=(
-  ["circuithq-traefik"]="Traefik reverse proxy"
-  ["circuithq-cloudflared"]="Cloudflare Tunnel"
-  ["circuithq-authelia"]="Authelia authentication"
-  ["circuithq-authelia-redis"]="Redis (sessions)"
-  ["circuithq-prometheus"]="Prometheus"
-  ["circuithq-grafana"]="Grafana"
-  ["circuithq-alertmanager"]="Alertmanager"
-  ["circuithq-loki"]="Loki"
-  ["circuithq-promtail"]="Promtail"
-  ["circuithq-node-exporter"]="Node Exporter"
-  ["circuithq-cadvisor"]="cAdvisor"
-  ["circuithq-blackbox-exporter"]="Blackbox Exporter"
-  ["circuithq-uptime-kuma"]="Uptime Kuma"
+CONTAINERS=(
+  "circuithq-traefik:Traefik reverse proxy"
+  "circuithq-cloudflared:Cloudflare Tunnel"
+  "circuithq-authelia:Authelia authentication"
+  "circuithq-authelia-redis:Redis (sessions)"
+  "circuithq-prometheus:Prometheus"
+  "circuithq-grafana:Grafana"
+  "circuithq-alertmanager:Alertmanager"
+  "circuithq-loki:Loki"
+  "circuithq-promtail:Promtail"
+  "circuithq-node-exporter:Node Exporter"
+  "circuithq-cadvisor:cAdvisor"
+  "circuithq-blackbox-exporter:Blackbox Exporter"
+  "circuithq-uptime-kuma:Uptime Kuma"
 )
 
-for name in "${!CONTAINERS[@]}"; do
-  desc="${CONTAINERS[$name]}"
+for entry in "${CONTAINERS[@]}"; do
+  name="${entry%%:*}"
+  desc="${entry#*:}"
   if docker inspect --format '{{.State.Status}}' "$name" 2>/dev/null | grep -q "running"; then
     echo -e "  ${GREEN}✅${NC} $name ($desc)"
   else

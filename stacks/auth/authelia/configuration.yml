@@ -9,13 +9,13 @@
 # Server
 ###############################################
 server:
-  host: 0.0.0.0
-  port: 9091
-  path: ""
-  read_buffer_size: 4096
-  write_buffer_size: 4096
-  enable_pprof: false
-  enable_expvars: false
+  address: tcp://0.0.0.0:9091
+  buffers:
+    read: 4096
+    write: 4096
+  endpoints:
+    enable_pprof: false
+    enable_expvars: false
 
 ###############################################
 # Logging
@@ -72,7 +72,8 @@ access_control:
   default_policy: deny                # Everything denied by default
   rules:
     # Rules loaded from external file
-    import: /config/access_rules.yml
+    - domain: "*.circuithq.internal"
+      policy: bypass
 
 ###############################################
 # Session (Redis-backed)
@@ -145,7 +146,6 @@ totp:
 
 webauthn:
   disable: false
-  enable_passkey_login: true
   display_name: CircuitHQ
   attestation_conveyance_preference: indirect
   user_verification: preferred

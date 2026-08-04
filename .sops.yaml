@@ -12,10 +12,10 @@ creation_rules:
 
   # Production secrets
   - path_regex: secrets/production/.*\.sops\.yaml
-    age: AGE_PLACEHOLDER_AGE_PUBLIC_KEY    # TODO: replace with real age public key
+    age: age1wd4v5qfrkmtfm9nnhuqgh6mpd2mp6jj66e3jxs60qj7053lcjq6qyjcs0w    # TODO: replace with real age public key
     encrypted_regex: "^(password|key|token|secret|api_key|private_key|credential)$"
 
   # Staging secrets
   - path_regex: secrets/staging/.*\.sops\.yaml
-    age: AGE_PLACEHOLDER_AGE_PUBLIC_KEY    # TODO: replace with real age public key
+    age: age1wd4v5qfrkmtfm9nnhuqgh6mpd2mp6jj66e3jxs60qj7053lcjq6qyjcs0w    # TODO: replace with real age public key
     encrypted_regex: "^(password|key|token|secret|api_key|private_key|credential)$"

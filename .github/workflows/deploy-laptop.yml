@@ -1,26 +1,19 @@
-# CircuitHQ — Manual Deploy Workflow
+# CircuitHQ — Laptop Deploy Workflow
 # =====================================
-# Deploys CircuitHQ stacks to the target host.
-# Requires manual (workflow_dispatch) trigger — NEVER runs automatically.
-# Only runs on the self-hosted runner.
+# Deploys CircuitHQ stacks to the M3 Mac laptop (production deployment target).
+# Requires:
+#   1. `docs/approvals/laptop-cicd-retarget-approved.md` to exist and be approved
+#   2. Manual (`workflow_dispatch`) trigger — NEVER runs automatically
+#   3. Typed confirmation `I_APPROVE_LAPTOP_DEPLOY`
+#   4. Runs only on the self-hosted M3 Mac runner
 #
-# Steps: 1) Preflight, 2) Backup, 3) Deploy stacks, 4) Health check
-#
-# ⚠️  PRODUCTION: Requires explicit approval in GitHub Actions UI.
+# Steps: 1) Check approval gate, 2) Preflight, 3) Backup, 4) Deploy, 5) Health check
 
-name: deploy
+name: deploy-laptop
 
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
       stacks:
         description: 'Stacks to deploy (comma-separated, or "all")'
         required: true
@@ -32,25 +25,41 @@ on:
         default: false
         type: boolean
       confirm:
-        description: 'Type "DEPLOY" to confirm'
+        description: 'Type "I_APPROVE_LAPTOP_DEPLOY" to confirm'
         required: true
         default: ''
         type: string
 
 env:
-  DEPLOY_TARGET: ${{ vars.DEPLOY_HOST || 'localhost' }}
-  DEPLOY_USER: ${{ vars.DEPLOY_USER || 'runner' }}
-  PROJECT_DIR: ${{ vars.PROJECT_DIR || '/opt/circuithq' }}
+  DEPLOY_TARGET: localhost
+  PROJECT_DIR: ${{ vars.PROJECT_DIR || '/Users/rutvik2611/Projects/CircuitHQ' }}
 
 jobs:
   deploy:
-    name: Deploy to ${{ github.event.inputs.environment }}
-    runs-on: ${{ vars.SELF_HOSTED_RUNNER }}
-    if: github.event.inputs.confirm == 'DEPLOY'
+    name: Deploy to Laptop (production)
+    runs-on: ${{ vars.SELF_HOSTED_RUNNER || 'self-hosted' }}
+    environment: laptop-production
+    if: github.event.inputs.confirm == 'I_APPROVE_LAPTOP_DEPLOY'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check approval gate
+        run: |
+          GATE="docs/approvals/laptop-cicd-retarget-approved.md"
+          if [ ! -f "$GATE" ]; then
+            echo "❌ Approval gate not found: $GATE"
+            echo "   Create this file and complete all pre-approval checks before deploying to laptop."
+            exit 1
+          fi
+          if ! grep -q "Status:\s*Approved" "$GATE"; then
+            echo "❌ Approval gate exists but is not in 'Approved' status."
+            echo "   Set Status: Approved in $GATE before deploying."
+            exit 1
+          fi
+          echo "✅ Approval gate passed — laptop deploy authorized"
+        shell: bash
 
       - name: Preflight checks
         run: |
@@ -71,6 +80,14 @@ jobs:
             fi
           else
             echo "⚠️  restic.env not found — skipping backup"
+          fi
+        shell: bash
+
+      - name: Render secrets
+        run: |
+          echo "🔐 Rendering secrets..."
+          if [ -f scripts/deploy/render-secrets.sh ]; then
+            bash scripts/deploy/render-secrets.sh || { echo "⚠️  Secret render failed"; exit 1; }
           fi
         shell: bash
 
@@ -112,10 +129,17 @@ jobs:
           fi
         shell: bash
 
+      - name: Traffic verification
+        run: |
+          if [ -f scripts/deploy/verify-traffic.sh ]; then
+            bash scripts/deploy/verify-traffic.sh || { echo "❌ Traffic verification failed"; exit 1; }
+          fi
+        shell: bash
+
       - name: Display deployment summary
         run: |
-          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Laptop Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: laptop-production" >> $GITHUB_STEP_SUMMARY
           echo "- Stacks: ${{ github.event.inputs.stacks }}" >> $GITHUB_STEP_SUMMARY
           echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

@@ -145,7 +145,7 @@ services:
 
   # ── Node Exporter ───────────────────────────────────────────────────
   node-exporter:
-    image: prom/node-exporter:v1.9
+    image: prom/node-exporter:v1.8.0
     container_name: circuithq-node-exporter
     restart: unless-stopped
 
@@ -176,7 +176,7 @@ services:
 
   # ── cAdvisor ────────────────────────────────────────────────────────
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: circuithq-cadvisor
     restart: unless-stopped
 
