@@ -1,0 +1,44 @@
+# CircuitHQ — Example Private App
+# =================================
+# A minimal private service with NO Traefik exposure.
+# Accessible only via the circuithq-private internal network.
+# Demonstrates the default posture: no accidental public routing.
+#
+# Key difference from example-public-app:
+# - NO traefik.enable=true label → not routed by Traefik
+# - Attached to circuithq-private (internal-only network)
+# - No proxy network → cannot be reached from Traefik
+
+services:
+  nginx:
+    image: nginx:alpine-slim
+    container_name: circuithq-example-private
+    restart: unless-stopped
+
+    networks:
+      - circuithq-private
+
+    # Run as non-root user for security
+    user: "101:101"
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # No traefik.enable label → not exposed via Traefik
+    # No proxy network → no route from Traefik
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  circuithq-private:
+    name: circuithq-private
+    external: true
+    internal: true

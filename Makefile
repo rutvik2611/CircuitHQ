@@ -58,6 +58,9 @@ security-scan:
 	@if [ -f scripts/validate/validate-compose-security.sh ]; then \
 		bash scripts/validate/validate-compose-security.sh; \
 	fi
+	@if [ -f scripts/validate/validate-app-exposure.sh ]; then \
+		bash scripts/validate/validate-app-exposure.sh; \
+	fi
 	@if command -v trivy &>/dev/null; then \
 		trivy fs --scanners config,vuln --quiet . 2>/dev/null || true; \
 	fi

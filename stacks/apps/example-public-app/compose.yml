@@ -1,0 +1,54 @@
+# CircuitHQ — Example Public App
+# =================================
+# A minimal public-facing service demonstrating the standard CircuitHQ
+# deployment pattern: Traefik routing, security defaults, health checks,
+# and explicit network attachment.
+
+services:
+  whoami:
+    image: traefik/whoami:v1.10
+    container_name: circuithq-whoami
+    restart: unless-stopped
+
+    networks:
+      - circuithq-proxy
+      - circuithq-shared
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      # Enable Traefik routing — MUST be set for public exposure
+      - "traefik.enable=true"
+
+      # Router: match Host header → route to this service
+      - "traefik.http.routers.whoami.rule=Host(`whoami.circuithq.internal`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls=true"
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+
+      # Service: point to the container's port
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+
+      # Middleware: public-chain includes security headers + rate limiting
+      # Change to auth-chain@file to require Authelia authentication
+      - "traefik.http.routers.whoami.middlewares=public-chain@file"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+
+  circuithq-shared:
+    name: circuithq-shared
+    external: true
