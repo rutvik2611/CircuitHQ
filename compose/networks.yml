@@ -1,0 +1,45 @@
+# CircuitHQ Docker Networks
+# All networks are external — created by scripts/bootstrap/02-create-networks.sh
+
+networks:
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+
+  circuithq-public:
+    name: circuithq-public
+    external: true
+
+  circuithq-private:
+    name: circuithq-private
+    external: true
+    internal: true
+
+  circuithq-management:
+    name: circuithq-management
+    external: true
+    internal: true
+
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+    internal: true
+
+  circuithq-database:
+    name: circuithq-database
+    external: true
+    internal: true
+
+  circuithq-shared:
+    name: circuithq-shared
+    external: true
+
+  circuithq-backup:
+    name: circuithq-backup
+    external: true
+    internal: true
+
+  circuithq-security:
+    name: circuithq-security
+    external: true
+    internal: true

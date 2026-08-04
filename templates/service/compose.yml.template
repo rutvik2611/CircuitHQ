@@ -1,0 +1,77 @@
+# Service Compose Template
+# Copy this template to create a new service stack under stacks/<service-name>/compose.yml
+
+name: circuithq-${SERVICE_NAME:-service}
+
+services:
+  app:
+    image: ${IMAGE:-example/image:latest}
+    container_name: circuithq-${SERVICE_NAME:-service}
+
+    # Security — remove or adjust if incompatible with the image
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Add back only required capabilities:
+    # cap_add:
+    #   - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+    # Networks — attach only what is needed
+    networks:
+      - circuithq-shared
+      # - circuithq-public    # for public apps behind Traefik
+      # - circuithq-private   # for private/admin apps
+      # - circuithq-database  # if this service is a database
+
+    # Volumes — mount persistent data
+    # volumes:
+    #   - data:/data
+
+    # Environment — secrets loaded at runtime via SOPS
+    # env_file:
+    #   - ../../configs/production/${SERVICE_NAME}.env
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # Traefik labels — only if this is a public or private web service.
+    # Remove the "traefik.enable=false" line when ready.
+    labels:
+      - "traefik.enable=false"
+      # Public route example:
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.${SERVICE_NAME}.rule=Host(`${SERVICE_NAME}.circuithq.example.com`)"
+      # - "traefik.http.routers.${SERVICE_NAME}.entrypoints=websecure"
+      # - "traefik.http.routers.${SERVICE_NAME}.tls=true"
+      # - "traefik.http.services.${SERVICE_NAME}.loadbalancer.server.port=8080"
+
+    # Logging — uses Docker default (json-file with rotation via daemon.json)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volumes — declare if the service has persistent data
+# volumes:
+#   data:
+
+networks:
+  circuithq-shared:
+    external: true
+  circuithq-public:
+    external: true
+  circuithq-private:
+    external: true
+  circuithq-database:
+    external: true

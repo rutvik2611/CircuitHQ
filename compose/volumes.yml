@@ -1,0 +1,43 @@
+# CircuitHQ Docker Volumes
+# Shared persistent volumes used across stacks
+
+volumes:
+  traefik-acme:
+    name: circuithq-traefik-acme
+    external: false
+
+  prometheus-data:
+    name: circuithq-prometheus-data
+    external: false
+
+  grafana-data:
+    name: circuithq-grafana-data
+    external: false
+
+  loki-data:
+    name: circuithq-loki-data
+    external: false
+
+  loki-rules:
+    name: circuithq-loki-rules
+    external: false
+
+  redis-data:
+    name: circuithq-redis-data
+    external: false
+
+  authelia-config:
+    name: circuithq-authelia-config
+    external: false
+
+  uptime-kuma-data:
+    name: circuithq-uptime-kuma-data
+    external: false
+
+  postgres-data:
+    name: circuithq-postgres-data
+    external: false
+
+  restic-cache:
+    name: circuithq-restic-cache
+    external: false

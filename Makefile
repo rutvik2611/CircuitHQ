@@ -74,6 +74,15 @@ evidence:
 	@cat /tmp/ci-evidence.md
 	@echo "✅ Evidence generated"
 
+validate-networks:
+	@echo "🔍 Validating Docker networks..."
+	@if [ -f scripts/validate/validate-networks.sh ]; then \
+		bash scripts/validate/validate-networks.sh; \
+	else \
+		echo "⚠️  Network validation script not yet created"; \
+	fi
+	@echo "✅ Network validation complete"
+
 bootstrap-check:
 	@echo "🔍 Checking host prerequisites..."
 	@docker version >/dev/null 2>&1 && echo "✅ Docker: installed" || echo "❌ Docker: NOT installed"
