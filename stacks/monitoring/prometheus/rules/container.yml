@@ -1,0 +1,51 @@
+# CircuitHQ — Container Alert Rules
+# ====================================
+groups:
+  - name: container
+    interval: 30s
+    rules:
+
+      - alert: ContainerDown
+        expr: time() - container_last_seen > 60
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is DOWN"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} has not been seen for over 60 seconds."
+
+      - alert: ContainerHighCpuUsage
+        expr: rate(container_cpu_usage_seconds_total{name!=""}[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} CPU high ({{ $value }}%)"
+          description: "Container {{ $labels.name }} is using {{ $value }}% CPU for 10 minutes."
+
+      - alert: ContainerHighMemoryUsage
+        expr: container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} memory high ({{ $value }}%)"
+          description: "Container {{ $labels.name }} memory usage is at {{ $value }}% of limit."
+
+      - alert: ContainerRestarting
+        expr: rate(container_last_seen{name!=""}[15m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} restarting frequently"
+          description: "Container {{ $labels.name }} has restarted multiple times in the last 15 minutes."
+
+      - alert: ContainerOomKilled
+        expr: container_oom_events_total{name!=""} > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} OOM killed"
+          description: "Container {{ $labels.name }} was killed due to out-of-memory."

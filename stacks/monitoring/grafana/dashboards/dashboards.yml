@@ -1,0 +1,16 @@
+# CircuitHQ — Grafana Dashboard Provisioning
+# ============================================
+apiVersion: 1
+
+providers:
+  - name: "CircuitHQ Dashboards"
+    orgId: 1
+    folder: "CircuitHQ"
+    folderUid: "circuithq"
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 60
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

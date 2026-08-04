@@ -1,0 +1,60 @@
+# CircuitHQ — Host Alert Rules
+# ==============================
+groups:
+  - name: host
+    interval: 30s
+    rules:
+
+      - alert: HostHighCpuLoad
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU load high ({{ $value }}%)"
+          description: "CPU usage on {{ $labels.instance }} is above 80% for 10 minutes."
+
+      - alert: HostLowMemory
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory usage high ({{ $value }}%)"
+          description: "Memory usage on {{ $labels.instance }} is above 85%."
+
+      - alert: HostDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host disk space critically low ({{ $value }}% free)"
+          description: "Disk on {{ $labels.instance }} mount {{ $labels.mountpoint }} has only {{ $value }}% free space."
+
+      - alert: HostDiskAlmostFull
+        expr: (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}) * 100 < 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk space low ({{ $value }}% free)"
+          description: "Disk on {{ $labels.instance }} mount {{ $labels.mountpoint }} has only {{ $value }}% free space."
+
+      - alert: HostHighDiskIo
+        expr: rate(node_disk_io_time_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk I/O high"
+          description: "Disk I/O on {{ $labels.instance }} device {{ $labels.device }} is at {{ $value }}%."
+
+      - alert: HostOomKillDetected
+        expr: increase(node_vmstat_oom_kill[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OOM kill detected on {{ $labels.instance }}"
+          description: "An out-of-memory kill occurred on {{ $labels.instance }}."

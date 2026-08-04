@@ -1,0 +1,329 @@
+# CircuitHQ — Monitoring Stack
+# ===============================
+# Prometheus + Grafana + Alertmanager + Node Exporter + cAdvisor + Blackbox Exporter + Uptime Kuma
+# All monitoring traffic stays on the internal monitoring network.
+# Grafana and Uptime Kuma are exposed via Traefik (behind Authelia).
+
+services:
+
+  # ── Prometheus ──────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.2
+    container_name: circuithq-prometheus
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+
+    volumes:
+      - type: bind
+        source: ./prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - type: bind
+        source: ./prometheus/rules
+        target: /etc/prometheus/rules
+        read_only: true
+      - prometheus-data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=9090"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Grafana ─────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.6-oss
+    container_name: circuithq-grafana
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+      - circuithq-proxy
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - type: bind
+        source: ./grafana/datasources
+        target: /etc/grafana/provisioning/datasources
+        read_only: true
+      - type: bind
+        source: ./grafana/dashboards
+        target: /etc/grafana/provisioning/dashboards
+        read_only: true
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana-admin-password
+      - GF_INSTALL_PLUGINS=
+      - GF_SERVER_ROOT_URL=https://grafana.circuithq.internal
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_DEFAULT_THEME=dark
+
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.circuithq.internal`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.middlewares=auth-chain@file"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Alertmanager ────────────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.28
+    container_name: circuithq-alertmanager
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+
+    volumes:
+      - type: bind
+        source: ./alertmanager/config.yml
+        target: /etc/alertmanager/alertmanager.yml
+        read_only: true
+
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=9093"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Node Exporter ───────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.9
+    container_name: circuithq-node-exporter
+    restart: unless-stopped
+
+    network_mode: host  # Required for real host network metrics
+
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+    volumes:
+      - type: bind
+        source: /
+        target: /host
+        read_only: true
+        bind:
+          propagation: rslave
+
+    healthcheck:
+      disable: true  # Node exporter runs with host networking; healthcheck unreliable
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── cAdvisor ────────────────────────────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52
+    container_name: circuithq-cadvisor
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+
+    privileged: true
+
+    volumes:
+      - type: bind
+        source: /
+        target: /rootfs
+        read_only: true
+      - type: bind
+        source: /var/run
+        target: /var/run
+        read_only: true
+      - type: bind
+        source: /sys
+        target: /sys
+        read_only: true
+      - type: bind
+        source: /var/lib/docker
+        target: /var/lib/docker
+        read_only: true
+      - type: bind
+        source: /dev/disk
+        target: /dev/disk
+        read_only: true
+
+    command:
+      - '-docker_only=true'
+      - '-housekeeping_interval=30s'
+      - '-max_housekeeping_interval=1m'
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8080"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── Blackbox Exporter ───────────────────────────────────────────────
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.26
+    container_name: circuithq-blackbox-exporter
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+      - circuithq-proxy
+
+    volumes:
+      - type: bind
+        source: ./blackbox/modules.yml
+        target: /etc/blackbox/blackbox.yml
+        read_only: true
+
+    command:
+      - '--config.file=/etc/blackbox/blackbox.yml'
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:9115/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=9115"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── Uptime Kuma ─────────────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23
+    container_name: circuithq-uptime-kuma
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+      - circuithq-proxy
+      - circuithq-public
+
+    volumes:
+      - uptime-kuma-data:/app/data
+
+    healthcheck:
+      test: ["CMD", "node", "server/server.js", "--health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime-kuma.rule=Host(`status.circuithq.internal`)"
+      - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
+      - "traefik.http.routers.uptime-kuma.tls=true"
+      - "traefik.http.routers.uptime-kuma.tls.certresolver=letsencrypt"
+      - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
+      # Public status page — bypass auth (set in Authelia access_rules.yml)
+      - "traefik.http.routers.uptime-kuma.middlewares=public-chain@file"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+
+  circuithq-public:
+    name: circuithq-public
+    external: true
+
+volumes:
+  prometheus-data:
+    name: circuithq-prometheus-data
+    external: true
+
+  grafana-data:
+    name: circuithq-grafana-data
+    external: true
+
+  uptime-kuma-data:
+    name: circuithq-uptime-kuma-data
+    external: true

@@ -1,0 +1,24 @@
+# CircuitHQ — Backup Alert Rules
+# ================================
+groups:
+  - name: backup
+    interval: 30s
+    rules:
+
+      - alert: BackupStale
+        expr: time() - node_file_atime_seconds{job="node",file="/var/backups/latest"} > 172800  # 48 hours
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup stale — no recent backup file"
+          description: "The backup file at /var/backups/latest has not been modified in over 48 hours."
+
+      - alert: BackupFailedRecent
+        expr: node_file_size_bytes{job="node",file="/var/backups/failures"} > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup failures detected"
+          description: "Backup failure indicators found on {{ $labels.instance }}."

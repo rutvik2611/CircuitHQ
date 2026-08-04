@@ -1,0 +1,33 @@
+# CircuitHQ — Certificate Alert Rules
+# =====================================
+groups:
+  - name: certificate
+    interval: 30s
+    rules:
+
+      - alert: CertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS certificate expires in {{ $value | humanizeDuration }}"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }} (less than 30 days)."
+
+      - alert: CertificateExpiringCritical
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 7
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "TLS certificate expires in {{ $value | humanizeDuration }}"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }} (less than 7 days)."
+
+      - alert: CertificateExpired
+        expr: probe_ssl_earliest_cert_expiry < time()
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TLS certificate has expired!"
+          description: "Certificate for {{ $labels.instance }} expired {{ $value | humanizeDuration }} ago."

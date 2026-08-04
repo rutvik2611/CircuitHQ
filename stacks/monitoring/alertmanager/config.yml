@@ -1,0 +1,54 @@
+# CircuitHQ — Alertmanager Configuration
+# ========================================
+# See: https://prometheus.io/docs/alerting/latest/configuration/
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default'
+
+  routes:
+    # Critical alerts: route to a separate receiver for faster response
+    - receiver: 'critical'
+      match:
+        severity: critical
+      continue: true
+
+    # Warnings: route to default receiver
+    - receiver: 'default'
+      match:
+        severity: warning
+
+receivers:
+
+  - name: 'default'
+    slack_configs:
+      - send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        # api_url: '<SOPS-ENCRYPTED>'  # TODO: configure after Phase 10
+
+  - name: 'critical'
+    slack_configs:
+      - send_resolved: true
+        title: '[CRITICAL] {{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        # api_url: '<SOPS-ENCRYPTED>'
+    email_configs:
+      - send_resolved: true
+        to: 'admin@circuithq.internal'
+        # smarthost, auth_* fields configured at deploy time via env
+        # headers:
+        #   subject: '[CircuitHQ CRITICAL] {{ .GroupLabels.alertname }}'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+templates:
+  - '/etc/alertmanager/*.tmpl'

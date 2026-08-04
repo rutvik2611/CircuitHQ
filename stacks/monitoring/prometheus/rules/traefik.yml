@@ -1,0 +1,42 @@
+# CircuitHQ — Traefik Alert Rules
+# ==================================
+groups:
+  - name: traefik
+    interval: 30s
+    rules:
+
+      - alert: TraefikHigh5xxRate
+        expr: (sum(rate(traefik_service_requests_total{code=~"5.."}[5m])) / sum(rate(traefik_service_requests_total[5m]))) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Traefik 5xx error rate high ({{ $value }}%)"
+          description: "Traefik is returning {{ $value }}% 5xx errors across all services."
+
+      - alert: TraefikHigh4xxRate
+        expr: (sum(rate(traefik_service_requests_total{code=~"4.."}[5m])) / sum(rate(traefik_service_requests_total[5m]))) * 100 > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traefik 4xx error rate high ({{ $value }}%)"
+          description: "Traefik is returning {{ $value }}% 4xx errors across all services."
+
+      - alert: TraefikNoTraffic
+        expr: sum(rate(traefik_service_requests_total[5m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traefik receiving no traffic"
+          description: "No requests have been routed through Traefik in the last 15 minutes."
+
+      - alert: TraefikHighLatency
+        expr: histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le, service)) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traefik P95 latency high ({{ $value }}s)"
+          description: "P95 request latency to service {{ $labels.service }} is above 5 seconds."
