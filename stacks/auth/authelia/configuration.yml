@@ -72,7 +72,7 @@ access_control:
   default_policy: deny                # Everything denied by default
   rules:
     # Rules loaded from external file
-    - domain: "*.circuithq.internal"
+    - domain: "*.m3.dev.rutvik2611.com"
       policy: bypass
 
 ###############################################
@@ -80,7 +80,7 @@ access_control:
 ###############################################
 session:
   name: authelia_session
-  domain: circuithq.internal          # TODO: replace with your domain
+  domain: m3.dev.rutvik2611.com          # TODO: replace with your domain
   same_site: lax
   inactivity: 5m                      # Idle timeout
   expiration: 1h                      # Absolute session lifetime

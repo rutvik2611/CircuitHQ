@@ -92,7 +92,7 @@ services:
     labels:
       # Expose Authelia itself for health/status checks via Traefik
       - "traefik.enable=true"
-      - "traefik.http.routers.authelia.rule=Host(`auth.circuithq.internal`)"
+      - "traefik.http.routers.authelia.rule=Host(`auth.m3.dev.rutvik2611.com`)"
       - "traefik.http.routers.authelia.entrypoints=websecure"
       - "traefik.http.routers.authelia.tls=true"
       - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"

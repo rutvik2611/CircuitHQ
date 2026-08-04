@@ -17,7 +17,7 @@ users:
     disabled: false
     displayname: "CircuitHQ Admin"
     password: "$argon2id$v=19$m=65536,t=3,p=4$fxJmz/PgmYUPcEM1RC85XQ$1jw1bDIY4lM5V6a1Y+OpkgXg3Wpogz8MQr7X9R4BbUk"
-    email: admin@circuithq.internal
+    email: admin@m3.dev.rutvik2611.com
     groups:
       - admins
       - users

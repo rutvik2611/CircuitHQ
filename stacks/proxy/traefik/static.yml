@@ -80,7 +80,7 @@ certificatesResolvers:
     acme:
       caServer: "https://acme-v02.api.letsencrypt.org/directory"
       # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"  # Staging for testing
-      email: "admin@circuithq.internal"                                     # TODO: replace with real email
+      email: "admin@m3.dev.rutvik2611.com"                                     # TODO: replace with real email
       storage: /etc/traefik/acme/acme.json
       keyType: EC256
       httpChallenge:

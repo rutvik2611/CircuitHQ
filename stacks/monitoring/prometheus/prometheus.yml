@@ -78,10 +78,10 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          - https://traefik.circuithq.internal/health
-          - https://grafana.circuithq.internal/api/health
-          - https://auth.circuithq.internal/api/health
-          - https://status.circuithq.internal
+          - https://traefik.m3.dev.rutvik2611.com/health
+          - https://grafana.m3.dev.rutvik2611.com/api/health
+          - https://auth.m3.dev.rutvik2611.com/api/health
+          - https://status.m3.dev.rutvik2611.com
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

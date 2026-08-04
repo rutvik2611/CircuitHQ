@@ -1,0 +1,25 @@
+# CircuitHQ — cloudflared Tunnel Configuration
+# ===============================================
+# Routes *.m3.dev.rutvik2611.com to Traefik (which handles routing/auth/TLS).
+# Traefik terminates TLS and routes based on the Host header.
+#
+# Requires: a Cloudflare tunnel token (TUNNEL_TOKEN env) that owns these routes.
+
+# Logging level (debug, info, warn, error)
+log-level: info
+
+# Metrics server (for Prometheus scraping)
+metrics: 0.0.0.0:2000
+
+# Ingress rules — order matters, first match wins.
+# Wildcard *.m3.dev.rutvik2611.com routes to Traefik.
+ingress:
+
+  # Everything under m3.dev.rutvik2611.com → Traefik
+  - hostname: "*.m3.dev.rutvik2611.com"
+    service: http://traefik:80
+    originRequest:
+      httpHostHeader: "{{ .hostHeader }}"
+
+  # Catch-all: return 404 for anything not matched above
+  - service: http_status:404

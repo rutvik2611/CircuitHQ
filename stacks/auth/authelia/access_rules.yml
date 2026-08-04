@@ -13,27 +13,27 @@
 access_rules:
 
   # ── Allow access to Authelia itself ─────────────────────────────────
-  - domain: "auth.circuithq.internal"
+  - domain: "auth.m3.dev.rutvik2611.com"
     policy: bypass                     # Login page must be accessible
 
   # ── Public services (no auth) ──────────────────────────────────────
   - domain:
-      - "status.circuithq.internal"    # Uptime Kuma (public status page)
+      - "status.m3.dev.rutvik2611.com"    # Uptime Kuma (public status page)
     policy: bypass
 
   # ─── Admin dashboards (MFA required) ─────────────────────────────────
   - domain:
-      - "traefik.circuithq.internal"   # Traefik dashboard
-      - "grafana.circuithq.internal"   # Grafana (Phase 8)
-      - "prometheus.circuithq.internal" # Prometheus (Phase 8)
-      - "loki.circuithq.internal"      # Loki (Phase 9)
+      - "traefik.m3.dev.rutvik2611.com"   # Traefik dashboard
+      - "grafana.m3.dev.rutvik2611.com"   # Grafana (Phase 8)
+      - "prometheus.m3.dev.rutvik2611.com" # Prometheus (Phase 8)
+      - "loki.m3.dev.rutvik2611.com"      # Loki (Phase 9)
     policy: two_factor
     subject:
       - ["group:admins"]
 
   # ── Private services (password-only, any authenticated user) ───────
   - domain:
-      - "*.app.circuithq.internal"     # Wildcard for future user-facing apps
+      - "*.app.m3.dev.rutvik2611.com"     # Wildcard for future user-facing apps
     policy: one_factor
     subject:
       - ["group:users"]
@@ -41,7 +41,7 @@ access_rules:
   # ── Tailscale-only services ─────────────────────────────────────────
   # These are only accessible via Tailscale IP; Authelia still protects them
   - domain:
-      - "*.internal.circuithq.internal"
+      - "*.internal.m3.dev.rutvik2611.com"
     policy: two_factor
     subject:
       - ["group:admins"]

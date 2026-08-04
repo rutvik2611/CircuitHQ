@@ -26,7 +26,7 @@ services:
       - "traefik.enable=true"
 
       # Router: match Host header → route to this service
-      - "traefik.http.routers.whoami.rule=Host(`whoami.circuithq.internal`)"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.m3.dev.rutvik2611.com`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls=true"
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"

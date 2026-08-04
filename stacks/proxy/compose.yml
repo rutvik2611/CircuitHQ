@@ -51,7 +51,7 @@ services:
     labels:
       # Enable Traefik itself as a routed service (dashboard)
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.circuithq.internal`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.m3.dev.rutvik2611.com`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@file"
       - "traefik.http.routers.dashboard.tls=true"
