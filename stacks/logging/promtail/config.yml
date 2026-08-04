@@ -1,0 +1,103 @@
+# CircuitHQ — Promtail Configuration
+# ====================================
+# Collects Docker container logs and Traefik access logs,
+# labels them with container metadata, and forwards to Loki.
+# See: https://grafana.com/docs/loki/latest/send-data/promtail/configuration/
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml      # Tracks read progress across restarts
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    timeout: 10s
+    backoff_config:
+      min_period: 100ms
+      max_period: 5s
+      max_retries: 5
+
+scrape_configs:
+
+  # ── Docker Container Logs ───────────────────────────────────────────
+  # Reads all Docker container JSON logs and enriches with container labels.
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            time: time
+            attrs: attrs
+
+      # Extract container_id from the file path for label enrichment
+      - regex:
+          source: filename
+          expression: /var/lib/docker/containers/(?P<container_id>[a-f0-9]{64})/
+
+      # Use Docker socket to get container metadata (name, image, labels)
+      - docker:
+          container_id: container_id
+
+      # Keep all log streams (stdout + stderr)
+
+      # Timestamp from the log entry
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+
+      # Output the log field only (strip JSON envelope)
+      - output:
+          source: log
+
+  # ── Traefik Access Logs ─────────────────────────────────────────────
+  # Collects Traefik JSON access logs from the host /var/log mount.
+  - job_name: traefik
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: traefik
+          __path__: /var/log/traefik/access.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            ClientHost: ClientHost
+            ClientUsername: ClientUsername
+            RequestMethod: RequestMethod
+            RequestPath: RequestPath
+            RequestProtocol: RequestProtocol
+            RequestHost: RequestHost
+            StatusCode: StatusCode
+            Latency: Latency
+            ServiceName: ServiceName
+            RouterName: RouterName
+            DownstreamStatus: DownstreamStatus
+            DownstreamContentSize: DownstreamContentSize
+
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+
+  # ── System Journal (Optional) ───────────────────────────────────────
+  # Uncomment to collect systemd journal logs alongside Docker logs.
+  # - job_name: system
+  #   journal:
+  #     max_age: 12h
+  #     labels:
+  #       job: system
+  #   relabel_configs:
+  #     - source_labels: ['__journal__hostname']
+  #       target_label: 'hostname'

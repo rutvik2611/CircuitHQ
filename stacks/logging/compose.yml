@@ -1,0 +1,101 @@
+# CircuitHQ — Logging Stack
+# ============================
+# Centralized log aggregation with Loki + Promtail.
+# Logs are collected via Promtail's Docker plugin, labeled by container and service,
+# and stored in Loki with bounded retention for small disk environments.
+#
+# Architecture: Container logs → Promtail → Loki → Grafana
+
+services:
+
+  # ── Loki (Log Storage) ─────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.4
+    container_name: circuithq-loki
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+
+    volumes:
+      - type: bind
+        source: ./loki/config.yml
+        target: /etc/loki/config.yml
+        read_only: true
+      - loki-data:/loki
+
+    command:
+      - '-config.file=/etc/loki/config.yml'
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=3100"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── Promtail (Log Collector) ───────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.4
+    container_name: circuithq-promtail
+    restart: unless-stopped
+
+    networks:
+      - circuithq-monitoring
+
+    volumes:
+      - type: bind
+        source: ./promtail/config.yml
+        target: /etc/promtail/config.yml
+        read_only: true
+      # Docker daemon logs — read container logs from the host
+      - type: bind
+        source: /var/lib/docker/containers
+        target: /var/lib/docker/containers
+        read_only: true
+      # Docker socket for container metadata labels
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      # Traefik access logs directory (optional — mounted if Traefik writes to file)
+      - type: bind
+        source: /var/log
+        target: /var/log
+        read_only: true
+
+    command:
+      - '-config.file=/etc/promtail/config.yml'
+
+    depends_on:
+      loki:
+        condition: service_healthy
+
+    healthcheck:
+      disable: true  # Promtail has no health endpoint; rely on Loki receiving logs
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+
+volumes:
+  loki-data:
+    name: circuithq-loki-data
+    external: true

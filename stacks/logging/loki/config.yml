@@ -1,0 +1,83 @@
+# CircuitHQ — Loki Configuration
+# ================================
+# See: https://grafana.com/docs/loki/latest/configuration/
+#
+# Retention tuned for homelab with limited disk space.
+# Loki is a log-metadata system — compressed log storage is far more
+# efficient than Elasticsearch, so 7-14 days is generous on small SSD.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+  log_level: info
+
+common:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  replication_factor: 1                # Single-node; no replication
+  path_prefix: /loki
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+    cache_ttl: 168h                    # 7 days index cache
+
+  filesystem:
+    directory: /loki/chunks
+
+limits_config:
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h    # Don't accept logs older than 7 days
+  ingestion_rate_mb: 10               # Limit per-ingester rate
+  ingestion_burst_size_mb: 20
+  max_query_series: 5000
+  max_query_lookback: 720h            # 30 days query window
+
+  # Retention per stream to bound storage
+  retention_period: 720h              # 30 days max retention
+  retention_streams:
+    - selector: '{job="docker"}'     # Container logs — keep 14 days
+      priority: 1
+      period: 336h
+    - selector: '{job="traefik"}'    # Traefik access logs — keep 30 days
+      priority: 2
+      period: 720h
+    - selector: '{job="system"}'     # System logs — keep 7 days
+      priority: 3
+      period: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  retention_enabled: true
+  retention_delete_delay: 2h          # Delay deletion for safety
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false
+
+querier:
+  max_concurrent: 8
+
+query_range:
+  align_queries_with_step: true
+  cache_results: true
+
+frontend:
+  log_queries_longer_than: 5s
+  max_outstanding_per_tenant: 100
