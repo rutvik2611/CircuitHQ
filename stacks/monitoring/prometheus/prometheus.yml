@@ -39,7 +39,7 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets:
-          - host.docker.internal:9100
+          - node-exporter:9100
         labels:
           host_type: physical
           instance: circuithq-host
@@ -70,24 +70,6 @@ scrape_configs:
           - alertmanager:9093
         labels:
           service: alertmanager
-
-  # ── Authelia Metrics ────────────────────────────────────────────────
-  - job_name: authelia
-    scrape_interval: 30s
-    static_configs:
-      - targets:
-          - authelia:9959
-        labels:
-          service: authelia
-
-  # ── cloudflared Metrics ─────────────────────────────────────────────
-  - job_name: cloudflared
-    scrape_interval: 30s
-    static_configs:
-      - targets:
-          - cloudflared:2000
-        labels:
-          service: cloudflared
 
   # ── Blackbox Exporter (HTTP probes) ─────────────────────────────────
   - job_name: blackbox-http

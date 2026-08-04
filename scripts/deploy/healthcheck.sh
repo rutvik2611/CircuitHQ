@@ -52,23 +52,26 @@ for entry in "${CONTAINERS[@]}"; do
 done
 echo ""
 
-# ── HTTP health endpoints ────────────────────────────────────────────
-echo "🌐 HTTP health endpoints:"
+# ── HTTP health endpoints (internal docker network) ─────────────────
+echo "🌐 HTTP health endpoints (via circuithq-monitoring network):"
+# Runs curl inside a throwaway container on the internal monitoring network,
+# since these services do not publish host ports (least-privilege design).
 health_url() {
-  local name="$1" url="$2"
-  if curl -sf -o /dev/null --max-time 5 "$url" 2>/dev/null; then
+  local name="$1" url="$2" service="$3"
+  if docker run --rm --network circuithq-monitoring curlimages/curl \
+      -sf -o /dev/null --max-time 5 "http://${service}${url}" 2>/dev/null; then
     echo -e "  ${GREEN}✅${NC} $name"
   else
-    echo -e "  ${RED}❌${NC} $name — not responding at $url"
+    echo -e "  ${RED}❌${NC} $name — not responding at $service$url"
     ERRORS=$((ERRORS + 1))
   fi
 }
 
-health_url "Prometheus"    "http://localhost:9090/-/healthy"
-health_url "Alertmanager"  "http://localhost:9093/-/healthy"
-health_url "Loki"          "http://localhost:3100/ready"
-health_url "Grafana"       "http://localhost:3000/api/health"
-health_url "Blackbox"      "http://localhost:9115/health"
+health_url "Prometheus"    "/-/healthy"        "prometheus:9090"
+health_url "Alertmanager"  "/-/healthy"        "alertmanager:9093"
+health_url "Loki"          "/ready"            "loki:3100"
+health_url "Grafana"       "/api/health"       "grafana:3000"
+health_url "Blackbox"      "/health"           "blackbox-exporter:9115"
 echo ""
 
 # ── Docker socket ────────────────────────────────────────────────────

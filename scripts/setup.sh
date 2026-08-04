@@ -249,7 +249,50 @@ else
 fi
 
 # ────────────────────────────────────────────────────────────────────
-step_header "Step 7: Render Secrets"
+step_header "Step 7: Cloudflare Tunnel Token"
+# ────────────────────────────────────────────────────────────────────
+# cloudflared needs a real Cloudflare tunnel token to run. If the stored
+# secret is empty/missing, prompt the user and encrypt it into the SOPS file.
+CLOUDFLARE_SOPS="$BASE_DIR/secrets/production/cloudflare.sops.yaml"
+CLOUDFLARE_TOKEN=""
+if [ -f "$CLOUDFLARE_SOPS" ]; then
+  CLOUDFLARE_TOKEN=$(sops --decrypt "$CLOUDFLARE_SOPS" 2>/dev/null \
+    | grep -E '^tunnel_token:' | sed 's/^tunnel_token:[[:space:]]*//' || true)
+fi
+
+if [ -z "$CLOUDFLARE_TOKEN" ] || [ "$CLOUDFLARE_TOKEN" = "placeholder_replace_with_real_token" ]; then
+  echo -e "  ${YELLOW}⚠️${NC} Cloudflare tunnel token is empty or a placeholder — cloudflared won't start."
+  if confirm "Set your Cloudflare tunnel token (from Zero Trust dashboard)?"; then
+    # Read WITHOUT echoing to screen (hidden input)
+    read -s -rp "  Paste Cloudflare tunnel token: " CLOUDFLARE_TOKEN
+    echo ""
+    if [ -n "$CLOUDFLARE_TOKEN" ]; then
+      if [ "$DRY_RUN" = false ]; then
+        # Write token directly into the gitignored rendered docker env file
+        # so cloudflared works immediately. Best-effort SOPS encryption below.
+        mkdir -p "$BASE_DIR/.secrets-rendered/production"
+        printf 'CLOUDFLARED_TUNNEL_TOKEN=%s\n' "$CLOUDFLARE_TOKEN" > "$BASE_DIR/.secrets-rendered/production/cloudflare.env.docker"
+        chmod 0600 "$BASE_DIR/.secrets-rendered/production/cloudflare.env.docker"
+
+        # Best-effort: also store in the SOPS secret so it survives re-renders
+        if sops --set "[\"tunnel_token\"]" "\"$CLOUDFLARE_TOKEN\"" "$CLOUDFLARE_SOPS" 2>/dev/null; then
+          echo -e "  ${GREEN}✅${NC} Cloudflare tunnel token set in SOPS secret + rendered file"
+        else
+          echo -e "  ${YELLOW}⚠️${NC} SOPS update skipped — token stored in rendered file only (still works)"
+        fi
+      else
+        echo -e "  ${YELLOW}  (dry-run: would store token)${NC}"
+      fi
+    else
+      echo -e "  ${YELLOW}  Skipped (no token provided) — cloudflared won't start${NC}"
+    fi
+  fi
+else
+  echo -e "  ${GREEN}✅${NC} Cloudflare tunnel token is set"
+fi
+
+# ────────────────────────────────────────────────────────────────────
+step_header "Step 8: Render Secrets"
 # ────────────────────────────────────────────────────────────────────
 if [ "$SOPS_INSTALLED" = true ] && [ -f "$AGE_KEY_PATH" ]; then
   if [ -d "$BASE_DIR/.secrets-rendered" ] && [ "$(ls -A "$BASE_DIR/.secrets-rendered" 2>/dev/null)" ]; then
@@ -269,7 +312,7 @@ else
 fi
 
 # ────────────────────────────────────────────────────────────────────
-step_header "Step 8: Final Validation"
+step_header "Step 9: Final Validation"
 # ────────────────────────────────────────────────────────────────────
 echo "Running: cd $BASE_DIR && make validate"
 echo ""

@@ -86,6 +86,28 @@ render_dir() {
       rm -f "$output_file"
       echo "   ✅ Authelia secrets split into $split_dir/"
     fi
+
+    # For cloudflared, convert to docker-compose env_file format (KEY=VALUE)
+    # so cloudflared's compose can read CLOUDFLARED_TUNNEL_TOKEN directly.
+    if [ "$base_name" = "cloudflare" ]; then
+      local cf_env="$BASE_DIR/.secrets-rendered/$env_name/cloudflare.env.docker"
+      rm -f "$cf_env"
+      while IFS= read -r line; do
+        if [[ "$line" =~ ^([a-z_]+):[[:space:]]*(.*)$ ]]; then
+          local key="${BASH_REMATCH[1]}"
+          local val="${BASH_REMATCH[2]}"
+          val="${val%\"}"; val="${val#\"}"
+          if [ -n "${val:-}" ]; then
+            case "$key" in
+              tunnel_token) printf 'CLOUDFLARED_TUNNEL_TOKEN=%s\n' "$val" >> "$cf_env" ;;
+              api_token)    printf 'CLOUDFLARE_API_TOKEN=%s\n' "$val" >> "$cf_env" ;;
+            esac
+          fi
+        fi
+      done < "$output_file"
+      chmod 0600 "$cf_env"
+      echo "   ✅ cloudflared env ready: $cf_env"
+    fi
   done
 }
 

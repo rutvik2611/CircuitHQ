@@ -153,10 +153,13 @@ services:
     container_name: circuithq-node-exporter
     restart: unless-stopped
 
-    network_mode: host  # Required for real host network metrics
+    # Runs on the internal monitoring network so Prometheus can scrape it.
+    # (Host networking does not work reliably on macOS/OrbStack; metrics are
+    # for the container Linux VM, not the macOS host.)
+    networks:
+      - circuithq-monitoring
 
     command:
-      - '--path.rootfs=/host'
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
@@ -168,7 +171,11 @@ services:
         read_only: true
 
     healthcheck:
-      disable: true  # Node exporter runs with host networking; healthcheck unreliable
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
     logging:
       driver: "json-file"

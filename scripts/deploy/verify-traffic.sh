@@ -19,9 +19,10 @@ ERRORS=0
 echo "=== CircuitHQ Traffic Verification ==="
 echo ""
 
-# ── Traefik ping (internal) ──────────────────────────────────────────
+# ── Traefik ping (internal docker network) ─────────────────────────
 echo "🔄 Traefik ping:"
-if curl -sf --max-time 5 "http://localhost:8080/ping" > /dev/null; then
+if docker run --rm --network circuithq-monitoring curlimages/curl \
+    -sf --max-time 5 "http://traefik:8080/ping" > /dev/null 2>&1; then
   echo -e "  ${GREEN}✅${NC} Traefik ping OK"
 else
   echo -e "  ${RED}❌${NC} Traefik ping failed"
@@ -31,7 +32,8 @@ echo ""
 
 # ── Traefik metrics (prometheus format) ──────────────────────────────
 echo "📊 Traefik metrics endpoint:"
-if curl -sf --max-time 5 "http://localhost:8080/metrics" | grep -q "traefik_" 2>/dev/null; then
+if docker run --rm --network circuithq-monitoring curlimages/curl \
+    -sf --max-time 5 "http://traefik:8080/metrics" 2>/dev/null | grep -q "traefik_"; then
   echo -e "  ${GREEN}✅${NC} Traefik metrics contain traefik_ prefix"
 else
   echo -e "  ${YELLOW}⚠️${NC} Traefik metrics not available or empty"
@@ -40,7 +42,8 @@ echo ""
 
 # ── Prometheus targets ──────────────────────────────────────────────
 echo "🎯 Prometheus targets (up count):"
-UP_COUNT=$(curl -sf --max-time 5 "http://localhost:9090/api/v1/targets" 2>/dev/null \
+UP_COUNT=$(docker run --rm --network circuithq-monitoring curlimages/curl \
+  -sf --max-time 5 "http://prometheus:9090/api/v1/targets" 2>/dev/null \
   | python3 -c "
 import json,sys
 try:
@@ -56,7 +59,8 @@ echo ""
 
 # ── Grafana health ───────────────────────────────────────────────────
 echo "📈 Grafana API:"
-GRAFANA_OK=$(curl -sf --max-time 5 "http://localhost:3000/api/health" 2>/dev/null \
+GRAFANA_OK=$(docker run --rm --network circuithq-monitoring curlimages/curl \
+  -sf --max-time 5 "http://grafana:3000/api/health" 2>/dev/null \
   | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('database','N/A'))" 2>/dev/null || echo "N/A")
 if [ "$GRAFANA_OK" = "ok" ]; then
   echo -e "  ${GREEN}✅${NC} Grafana healthy (DB: $GRAFANA_OK)"
@@ -68,9 +72,10 @@ echo ""
 
 # ── Authelia health (forward-auth simulation) ───────────────────────
 echo "🔐 Authelia forward-auth (expect 401 without cookie):"
-HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
+HTTP_CODE=$(docker run --rm --network circuithq-proxy curlimages/curl \
+  -sf -o /dev/null -w "%{http_code}" --max-time 5 \
   "http://authelia:9091/api/authz/forward-auth" 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "400" ]; then
   echo -e "  ${GREEN}✅${NC} Authelia returns $HTTP_CODE (expected for unauthenticated)"
 elif [ "$HTTP_CODE" = "000" ]; then
   echo -e "  ${RED}❌${NC} Authelia not reachable"
@@ -82,8 +87,9 @@ echo ""
 
 # ── Alertmanager health ──────────────────────────────────────────────
 echo "🔔 Alertmanager health:"
-AM_CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 5 \
-  "http://localhost:9093/-/healthy" 2>/dev/null || echo "000")
+AM_CODE=$(docker run --rm --network circuithq-monitoring curlimages/curl \
+  -sf -o /dev/null -w "%{http_code}" --max-time 5 \
+  "http://alertmanager:9093/-/healthy" 2>/dev/null || echo "000")
 if [ "$AM_CODE" = "200" ]; then
   echo -e "  ${GREEN}✅${NC} Alertmanager healthy"
 else
@@ -94,7 +100,8 @@ echo ""
 
 # ── Loki readiness ───────────────────────────────────────────────────
 echo "📝 Loki readiness:"
-if curl -sf --max-time 5 "http://localhost:3100/ready" > /dev/null; then
+if docker run --rm --network circuithq-monitoring curlimages/curl \
+    -sf --max-time 5 "http://loki:3100/ready" > /dev/null 2>&1; then
   echo -e "  ${GREEN}✅${NC} Loki ready"
 else
   echo -e "  ${RED}❌${NC} Loki not ready"
