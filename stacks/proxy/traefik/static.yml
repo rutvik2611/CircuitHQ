@@ -42,15 +42,12 @@ api:
   debug: false
 
 # Entrypoints
+# Cloudflare Tunnel terminates public TLS at the edge for *.m3.dev.rutvik2611.com.
+# cloudflared forwards plain HTTP to Traefik on :80, which routes per Host header.
+# So 'web' serves HTTP (no redirect) and each service gets its own domain.
 entryPoints:
   web:
     address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
 
   websecure:
     address: ":443"

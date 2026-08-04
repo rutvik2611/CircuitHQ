@@ -54,9 +54,7 @@ services:
       - "traefik.http.routers.dashboard.rule=Host(`traefik.m3.dev.rutvik2611.com`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@file"
-      - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.entrypoints=web"
 
       # API metrics scraping port (internal monitoring only)
       - "prometheus.scrape=true"

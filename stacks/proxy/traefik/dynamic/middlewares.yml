@@ -8,21 +8,17 @@ http:
 
     # ── Security Headers ──────────────────────────────────────────────────
     # Broad-spectrum security headers for all public routes.
-    # Detailed sub-option definitions live in security-headers.yml.
+    # (Build-in 'headers' middleware — Traefik v3)
     secHeaders:
-      plugin:
-        headers:
-          frameDeny: true
-          sslRedirect: true
-          stsSeconds: 31536000
-          stsIncludeSubdomains: true
-          stsPreload: true
-          contentTypeNosniff: true
-          browserXssFilter: true
-          customFrameOptionsValue: "SAMEORIGIN"
-          referrerPolicy: "strict-origin-when-cross-origin"
-          permissionsPolicy: |
-            camera=(), microphone=(), geolocation=(), interest-cohort=()
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
 
     # ── Rate Limiting ────────────────────────────────────────────────────
     # Default rate limit applied to all public-facing routes.

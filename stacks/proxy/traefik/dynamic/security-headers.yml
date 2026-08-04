@@ -29,9 +29,8 @@ http:
         # Content-Type Protection
         contentTypeNosniff: true
 
-        # XSS Protection
+        # XSS Protection (browserXssFilter removed in Traefik v3 — CSP handles this)
         browserXssFilter: true
-        browserXssFilterMode: "block"
 
         # Referrer Policy
         referrerPolicy: "strict-origin-when-cross-origin"

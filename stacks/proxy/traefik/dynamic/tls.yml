@@ -31,14 +31,6 @@ tls:
       sniStrict: true
       preferServerCipherSuites: true
 
-  # ── Certificate Store ────────────────────────────────────────────────
-  stores:
-    default:
-      defaultCertificate:
-        # Fallback self-signed cert from ACME storage
-        # When no matching SNI provider is found, uses the default below
-        certFile: ""
-
   # ── ACME Certificate Resolver ────────────────────────────────────────
   # certificatesResolvers are defined in static.yml under the letsencrypt key.
   # Per-router TLS config labels reference certResolver=letsencrypt.
