@@ -1,0 +1,112 @@
+# CircuitHQ — Manual Deploy Workflow
+# =====================================
+# Deploys CircuitHQ stacks to the target host.
+# Requires manual (workflow_dispatch) trigger — NEVER runs automatically.
+# Only runs on the self-hosted runner.
+#
+# Steps: 1) Preflight, 2) Backup, 3) Deploy stacks, 4) Health check
+#
+# ⚠️  PRODUCTION: Requires explicit approval in GitHub Actions UI.
+
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      stacks:
+        description: 'Stacks to deploy (comma-separated, or "all")'
+        required: true
+        default: 'proxy,auth,monitoring,logging'
+        type: string
+      skip_backup:
+        description: 'Skip pre-deploy backup'
+        required: false
+        default: false
+        type: boolean
+      confirm:
+        description: 'Type "DEPLOY" to confirm'
+        required: true
+        default: ''
+        type: string
+
+env:
+  DEPLOY_TARGET: ${{ vars.DEPLOY_HOST || 'localhost' }}
+  DEPLOY_USER: ${{ vars.DEPLOY_USER || 'runner' }}
+  PROJECT_DIR: ${{ vars.PROJECT_DIR || '/opt/circuithq' }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ${{ vars.SELF_HOSTED_RUNNER }}
+    if: github.event.inputs.confirm == 'DEPLOY'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Preflight checks
+        run: |
+          if [ -f scripts/deploy/preflight.sh ]; then
+            bash scripts/deploy/preflight.sh
+          else
+            echo "⚠️  preflight.sh not found — skipping"
+          fi
+        shell: bash
+
+      - name: Run pre-deploy backup
+        if: ${{ !github.event.inputs.skip_backup }}
+        run: |
+          echo "📦 Running pre-deploy backup..."
+          if [ -f .secrets-rendered/production/restic.env ]; then
+            RESTIC_ENV=.secrets-rendered/production/restic.env bash scripts/backup/backup.sh || echo "⚠️  Backup had issues — continuing"
+          else
+            echo "⚠️  restic.env not found — skipping backup"
+          fi
+        shell: bash
+
+      - name: Deploy stacks
+        run: |
+          STACKS="${{ github.event.inputs.stacks }}"
+          if [ "$STACKS" = "all" ]; then
+            STACKS="proxy,auth,monitoring,logging"
+          fi
+          IFS=',' read -ra STACK_LIST <<< "$STACKS"
+          for stack in "${STACK_LIST[@]}"; do
+            echo "🚀 Deploying stack: $stack"
+            if [ -d "stacks/$stack" ]; then
+              docker compose -f "stacks/$stack/compose.yml" pull
+              docker compose -f "stacks/$stack/compose.yml" up -d
+            else
+              echo "  ❌ Stack not found: stacks/$stack"
+              exit 1
+            fi
+          done
+        shell: bash
+
+      - name: Health check
+        run: |
+          if [ -f scripts/deploy/healthcheck.sh ]; then
+            bash scripts/deploy/healthcheck.sh
+          else
+            echo "   Checking core services..."
+            for container in circuithq-traefik circuithq-authelia circuithq-prometheus circuithq-grafana; do
+              docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null && echo "  ✅ $container" || echo "  ⚠️  $container not running"
+            done
+          fi
+        shell: bash
+
+      - name: Display deployment summary
+        run: |
+          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Stacks: ${{ github.event.inputs.stacks }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

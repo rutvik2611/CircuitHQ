@@ -1,0 +1,45 @@
+# CircuitHQ — Woodpecker CI Pipeline
+# =====================================
+# Skeleton for Woodpecker CI (free, self-hosted).
+# Copy to project root as .woodpecker.yml when using Woodpecker.
+#
+# See: ci/README.md for CI option comparison
+
+# pipeline:
+#   validate:
+#     image: alpine:3.20
+#     commands:
+#       - apk add --no-cache yamllint shellcheck docker-cli
+#       - yamllint . --strict -d '{extends: relaxed, rules: {line-length: {max: 120}}}'
+#       - find scripts/ -name "*.sh" -exec shellcheck {} +
+#       - for f in stacks/*/compose.yml; do docker compose -f "$f" config >/dev/null && echo "✅ $f"; done
+#       - |
+#         if [ -f scripts/validate/validate-permissions.sh ]; then
+#           bash scripts/validate/validate-permissions.sh
+#         fi
+#       - |
+#         if [ -f scripts/validate/validate-compose-security.sh ]; then
+#           bash scripts/validate/validate-compose-security.sh
+#         fi
+#       - |
+#         if [ -f scripts/validate/validate-secrets.sh ]; then
+#           bash scripts/validate/validate-secrets.sh
+#         fi
+#     when:
+#       - event: [push, pull_request]
+#         branch: main
+#
+#   deploy:
+#     image: alpine:3.20
+#     commands:
+#       - apk add --no-cache docker-cli docker-compose
+#       - cd /opt/circuithq
+#       - git pull
+#       - docker compose -f stacks/proxy/compose.yml up -d
+#       - docker compose -f stacks/auth/compose.yml up -d
+#       - docker compose -f stacks/monitoring/compose.yml up -d
+#       - docker compose -f stacks/logging/compose.yml up -d
+#     when:
+#       - event: deployment
+#         environment: production
+#         branch: main
