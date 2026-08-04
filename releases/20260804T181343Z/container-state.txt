@@ -1,0 +1,4 @@
+NAMES                      STATUS                          IMAGE
+circuithq-authelia         Restarting (1) 29 seconds ago   authelia/authelia:4.38
+circuithq-authelia-redis   Up 3 minutes (healthy)          redis:7-alpine
+circuithq-traefik          Restarting (1) 41 seconds ago   traefik:v3.3

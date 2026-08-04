@@ -1,0 +1,300 @@
+name: monitoring
+services:
+  alertmanager:
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    container_name: circuithq-alertmanager
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:9093/-/healthy
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: prom/alertmanager:v0.28
+    labels:
+      prometheus.port: "9093"
+      prometheus.scrape: "true"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-monitoring: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/alertmanager/config.yml
+        target: /etc/alertmanager/alertmanager.yml
+        read_only: true
+  blackbox-exporter:
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    container_name: circuithq-blackbox-exporter
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:9115/health
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: prom/blackbox-exporter:v0.26
+    labels:
+      prometheus.port: "9115"
+      prometheus.scrape: "true"
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    networks:
+      circuithq-monitoring: null
+      circuithq-proxy: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/blackbox/modules.yml
+        target: /etc/blackbox/blackbox.yml
+        read_only: true
+  cadvisor:
+    command:
+      - -docker_only=true
+      - -housekeeping_interval=30s
+      - -max_housekeeping_interval=1m
+    container_name: circuithq-cadvisor
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:8080/healthz
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    labels:
+      prometheus.port: "8080"
+      prometheus.scrape: "true"
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    networks:
+      circuithq-monitoring: null
+    privileged: true
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /
+        target: /rootfs
+        read_only: true
+      - type: bind
+        source: /var/run
+        target: /var/run
+        read_only: true
+      - type: bind
+        source: /sys
+        target: /sys
+        read_only: true
+      - type: bind
+        source: /var/lib/docker
+        target: /var/lib/docker
+        read_only: true
+      - type: bind
+        source: /dev/disk
+        target: /dev/disk
+        read_only: true
+  grafana:
+    container_name: circuithq-grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+        required: true
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      GF_INSTALL_PLUGINS: ""
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SERVER_ROOT_URL: https://grafana.circuithq.internal
+      GF_USERS_DEFAULT_THEME: dark
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:3000/api/health
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 15s
+    image: grafana/grafana:11.6-oss
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.grafana.entrypoints: websecure
+      traefik.http.routers.grafana.middlewares: auth-chain@file
+      traefik.http.routers.grafana.rule: Host(`grafana.circuithq.internal`)
+      traefik.http.routers.grafana.tls: "true"
+      traefik.http.routers.grafana.tls.certresolver: letsencrypt
+      traefik.http.services.grafana.loadbalancer.server.port: "3000"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-monitoring: null
+      circuithq-proxy: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: grafana-data
+        target: /var/lib/grafana
+        volume: {}
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/grafana/datasources
+        target: /etc/grafana/provisioning/datasources
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/grafana/dashboards
+        target: /etc/grafana/provisioning/dashboards
+        read_only: true
+  node-exporter:
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    container_name: circuithq-node-exporter
+    healthcheck:
+      disable: true
+    image: prom/node-exporter:v1.8.0
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /
+        target: /host
+        read_only: true
+        bind:
+          propagation: rslave
+  prometheus:
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    container_name: circuithq-prometheus
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:9090/-/healthy
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: prom/prometheus:v3.2
+    labels:
+      prometheus.port: "9090"
+      prometheus.scrape: "true"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-monitoring: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/monitoring/prometheus/rules
+        target: /etc/prometheus/rules
+        read_only: true
+      - type: volume
+        source: prometheus-data
+        target: /prometheus
+        volume: {}
+  uptime-kuma:
+    container_name: circuithq-uptime-kuma
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - server/server.js
+        - --health-check
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 20s
+    image: louislam/uptime-kuma:1.23
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.uptime-kuma.entrypoints: websecure
+      traefik.http.routers.uptime-kuma.middlewares: public-chain@file
+      traefik.http.routers.uptime-kuma.rule: Host(`status.circuithq.internal`)
+      traefik.http.routers.uptime-kuma.tls: "true"
+      traefik.http.routers.uptime-kuma.tls.certresolver: letsencrypt
+      traefik.http.services.uptime-kuma.loadbalancer.server.port: "3001"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-monitoring: null
+      circuithq-proxy: null
+      circuithq-public: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: uptime-kuma-data
+        target: /app/data
+        volume: {}
+networks:
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+  circuithq-public:
+    name: circuithq-public
+    external: true
+volumes:
+  grafana-data:
+    name: circuithq-grafana-data
+    external: true
+  prometheus-data:
+    name: circuithq-prometheus-data
+    external: true
+  uptime-kuma-data:
+    name: circuithq-uptime-kuma-data
+    external: true

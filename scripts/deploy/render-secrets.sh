@@ -21,6 +21,12 @@
 
 set -euo pipefail
 
+# Ensure sops can find the age key
+AGE_KEY_PATH="$HOME/.config/sops/age/keys.txt"
+if [ -f "$AGE_KEY_PATH" ] && [ -z "${SOPS_AGE_KEY_FILE:-}" ]; then
+  export SOPS_AGE_KEY_FILE="$AGE_KEY_PATH"
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV="${ENV:-all}"  # all, production, staging

@@ -1,0 +1,95 @@
+name: auth
+services:
+  authelia:
+    container_name: circuithq-authelia
+    depends_on:
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD_FILE: /config/secrets.env
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /config/secrets.env
+      AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: /config/secrets.env
+      AUTHELIA_SESSION_SECRET_FILE: /config/secrets.env
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /config/secrets.env
+      TZ: America/New_York
+    healthcheck:
+      test:
+        - CMD
+        - authelia
+        - health
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+    image: authelia/authelia:4.38
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.authelia.entrypoints: websecure
+      traefik.http.routers.authelia.middlewares: dashboard-auth@file
+      traefik.http.routers.authelia.rule: Host(`auth.circuithq.internal`)
+      traefik.http.routers.authelia.tls: "true"
+      traefik.http.routers.authelia.tls.certresolver: letsencrypt
+      traefik.http.services.authelia.loadbalancer.server.port: "9091"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-proxy: null
+      circuithq-security: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/auth/authelia/configuration.yml
+        target: /config/configuration.yml
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/auth/authelia/users_database.yml
+        target: /config/users_database.yml
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/auth/authelia/access_rules.yml
+        target: /config/access_rules.yml
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/.secrets-rendered/production/authelia.env
+        target: /config/secrets.env
+        read_only: true
+  redis:
+    container_name: circuithq-authelia-redis
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 3s
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    image: redis:7-alpine
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    networks:
+      circuithq-security: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+        volume: {}
+networks:
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+  circuithq-security:
+    name: circuithq-security
+    external: true
+volumes:
+  redis-data:
+    name: circuithq-redis-data
+    external: true

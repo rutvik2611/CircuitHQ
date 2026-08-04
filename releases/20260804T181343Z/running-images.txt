@@ -1,0 +1,3 @@
+authelia/authelia:4.38
+redis:7-alpine
+traefik:v3.3

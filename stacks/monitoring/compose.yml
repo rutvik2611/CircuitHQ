@@ -8,7 +8,7 @@ services:
 
   # ── Prometheus ──────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:v3.2
+    image: prom/prometheus:v3.13.2
     container_name: circuithq-prometheus
     restart: unless-stopped
 
@@ -53,7 +53,7 @@ services:
 
   # ── Grafana ─────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:11.6-oss
+    image: grafana/grafana:11.6.0
     container_name: circuithq-grafana
     restart: unless-stopped
 
@@ -109,7 +109,7 @@ services:
 
   # ── Alertmanager ────────────────────────────────────────────────────
   alertmanager:
-    image: prom/alertmanager:v0.28
+    image: prom/alertmanager:v0.33.1
     container_name: circuithq-alertmanager
     restart: unless-stopped
 
@@ -231,7 +231,7 @@ services:
 
   # ── Blackbox Exporter ───────────────────────────────────────────────
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.26
+    image: prom/blackbox-exporter:v0.28.0
     container_name: circuithq-blackbox-exporter
     restart: unless-stopped
 
@@ -267,7 +267,7 @@ services:
 
   # ── Uptime Kuma ─────────────────────────────────────────────────────
   uptime-kuma:
-    image: louislam/uptime-kuma:1.23
+    image: louislam/uptime-kuma:latest
     container_name: circuithq-uptime-kuma
     restart: unless-stopped
 

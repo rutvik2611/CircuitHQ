@@ -1,0 +1,82 @@
+name: logging
+services:
+  loki:
+    command:
+      - -config.file=/etc/loki/config.yml
+    container_name: circuithq-loki
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O-
+        - http://localhost:3100/ready
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 15s
+    image: grafana/loki:3.4
+    labels:
+      prometheus.port: "3100"
+      prometheus.scrape: "true"
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    networks:
+      circuithq-monitoring: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/logging/loki/config.yml
+        target: /etc/loki/config.yml
+        read_only: true
+      - type: volume
+        source: loki-data
+        target: /loki
+        volume: {}
+  promtail:
+    command:
+      - -config.file=/etc/promtail/config.yml
+    container_name: circuithq-promtail
+    depends_on:
+      loki:
+        condition: service_healthy
+        required: true
+    healthcheck:
+      disable: true
+    image: grafana/promtail:3.4
+    logging:
+      driver: json-file
+      options:
+        max-file: "2"
+        max-size: 5m
+    networks:
+      circuithq-monitoring: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/logging/promtail/config.yml
+        target: /etc/promtail/config.yml
+        read_only: true
+      - type: bind
+        source: /var/lib/docker/containers
+        target: /var/lib/docker/containers
+        read_only: true
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: /var/log
+        target: /var/log
+        read_only: true
+networks:
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+volumes:
+  loki-data:
+    name: circuithq-loki-data
+    external: true

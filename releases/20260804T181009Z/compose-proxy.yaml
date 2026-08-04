@@ -1,0 +1,75 @@
+name: proxy
+services:
+  traefik:
+    container_name: circuithq-traefik
+    healthcheck:
+      test:
+        - CMD
+        - traefik
+        - healthcheck
+        - --ping
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 15s
+    image: traefik:v3.3
+    labels:
+      prometheus.path: /metrics
+      prometheus.port: "8080"
+      prometheus.scrape: "true"
+      traefik.enable: "true"
+      traefik.http.routers.dashboard.entrypoints: websecure
+      traefik.http.routers.dashboard.middlewares: dashboard-auth@file
+      traefik.http.routers.dashboard.rule: Host(`traefik.circuithq.internal`)
+      traefik.http.routers.dashboard.service: api@internal
+      traefik.http.routers.dashboard.tls: "true"
+      traefik.http.routers.dashboard.tls.certresolver: letsencrypt
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      circuithq-monitoring: null
+      circuithq-proxy: null
+      circuithq-security: null
+    ports:
+      - mode: host
+        target: 80
+        published: "80"
+        protocol: tcp
+      - mode: host
+        target: 443
+        published: "443"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/proxy/traefik/static.yml
+        target: /etc/traefik/traefik.yml
+        read_only: true
+      - type: bind
+        source: /Users/rutvik2611/Projects/CircuitHQ/stacks/proxy/traefik/dynamic
+        target: /etc/traefik/dynamic
+        read_only: true
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: volume
+        source: traefik-acme
+        target: /etc/traefik/acme
+networks:
+  circuithq-monitoring:
+    name: circuithq-monitoring
+    external: true
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+  circuithq-security:
+    name: circuithq-security
+    external: true
+volumes:
+  traefik-acme:
+    name: circuithq-traefik-acme
+    external: true
