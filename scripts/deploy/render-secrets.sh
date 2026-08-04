@@ -62,6 +62,30 @@ render_dir() {
     sops --decrypt "$sops_file" > "$output_file"
     chmod 0600 "$output_file"
     echo "   ✅ $output_file (0600)"
+
+    # For Authelia, split secrets into individual files (one per secret).
+    # Authelia reads *_FILE env vars as a single value per file.
+    if [ "$base_name" = "authelia" ]; then
+      local split_dir="$BASE_DIR/.secrets-rendered/$env_name/authelia"
+      mkdir -p "$split_dir"
+      # Parse YAML "key: value" (key may contain underscores, value on same line)
+      while IFS= read -r line; do
+        # Only handle top-level "key: value" lines (no leading spaces)
+        if [[ "$line" =~ ^([a-z_]+):[[:space:]]*(.*)$ ]]; then
+          local key="${BASH_REMATCH[1]}"
+          local val="${BASH_REMATCH[2]}"
+          # Strip YAML quotes
+          val="${val%\"}"; val="${val#\"}"
+          if [ -n "${val:-}" ]; then
+            printf '%s' "$val" > "$split_dir/$key"
+            chmod 0600 "$split_dir/$key"
+            echo "   ➜ split: $split_dir/$key"
+          fi
+        fi
+      done < "$output_file"
+      rm -f "$output_file"
+      echo "   ✅ Authelia secrets split into $split_dir/"
+    fi
   done
 }
 

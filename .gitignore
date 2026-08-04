@@ -47,6 +47,10 @@ test-containers/
 # Release builds
 releases/*.tar.gz
 releases/*.zip
+releases/*/
+
+# Rendered secrets
+.secrets-rendered/
 
 # Python/Node/npm if used
 __pycache__/

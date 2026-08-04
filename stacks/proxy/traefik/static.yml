@@ -89,6 +89,7 @@ certificatesResolvers:
 # Ping healthcheck
 ping:
   entryPoint: traefik
+  manualRouting: true
 
 # Metrics
 metrics:

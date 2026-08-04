@@ -71,6 +71,10 @@ services:
         source: ./grafana/dashboards
         target: /etc/grafana/provisioning/dashboards
         read_only: true
+      - type: bind
+        source: ../../.secrets-rendered/production/grafana-admin-password
+        target: /run/secrets/grafana-admin-password
+        read_only: true
 
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -162,8 +166,6 @@ services:
         source: /
         target: /host
         read_only: true
-        bind:
-          propagation: rslave
 
     healthcheck:
       disable: true  # Node exporter runs with host networking; healthcheck unreliable

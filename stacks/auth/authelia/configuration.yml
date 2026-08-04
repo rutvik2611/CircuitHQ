@@ -112,20 +112,6 @@ storage:
 notifier:
   filesystem:
     filename: /config/notifications.yml
-  # smtp:
-  #   host: smtp.example.com
-  #   port: 587
-  #   username: "admin@circuithq.internal"
-  #   password: ""                    # Set via AUTHELIA_NOTIFIER_SMTP_PASSWORD
-  #   sender: "authelia@circuithq.internal"
-  #   subject: "[CircuitHQ] {title}"
-  #   startup_check_address: "admin@circuithq.internal"
-  #   disable_require_tls: false
-  #   disable_html_emails: false
-  #   tls:
-  #     server_name: smtp.example.com
-  #     skip_verify: false
-  #     minimum_version: TLS1.2
 
 ###############################################
 # Identity Validation
