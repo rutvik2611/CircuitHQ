@@ -1,0 +1,67 @@
+# CircuitHQ — Cloudflare Tunnel (cloudflared) Stack
+# ====================================================
+# Public internet ingress: Cloudflare Tunnel → Traefik → upstream services.
+# cloudflared runs locally and maintains an outbound tunnel to Cloudflare's edge.
+# No inbound firewall ports required — the tunnel is a reverse WebSocket connection.
+#
+# Architecture: Internet → Cloudflare Edge → Cloudflare Tunnel → cloudflared → Traefik → App
+#
+# Prerequisites:
+# - Cloudflare account with domain added
+# - Cloudflare Tunnel created in Zero Trust dashboard
+# - Tunnel token/credentials.json placed at ./cloudflared/credentials.json (not committed)
+#   or set via $CLOUDFLARED_TUNNEL_TOKEN environment variable
+#
+# See: infra/cloudflare/README.md for full setup guide
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: circuithq-cloudflared
+    restart: unless-stopped
+
+    networks:
+      - circuithq-proxy
+
+    volumes:
+      # Mount the tunnel config directory (do NOT commit credentials.json)
+      - type: bind
+        source: ./cloudflared
+        target: /etc/cloudflared
+        read_only: true
+
+    # Tunnel token can be provided either:
+    #   1. Via credentials.json file mounted above (TUNNEL_CRED_FILE env)
+    #   2. Via the TUNNEL_TOKEN environment variable (preferred for security)
+    #   3. Via docker secret
+    environment:
+      - TUNNEL_METRICS=0.0.0.0:2000
+      - TUNNEL_URL=http://traefik:80
+      # - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN:-}
+      # - TUNNEL_CRED_FILE=/etc/cloudflared/credentials.json
+      # - TUNNEL_TRANSPORT_PROTOCOL=quic   # QUIC is default; fallback: http2
+
+    # Expose metrics port to monitoring network (uncomment when monitoring stack exists)
+    # ports:
+    #   - target: 2000
+    #     published: 2000
+    #     protocol: tcp
+    #     mode: host
+
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
