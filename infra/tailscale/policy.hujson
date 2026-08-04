@@ -1,0 +1,128 @@
+// CircuitHQ Tailscale ACL Policy
+//
+// This is the source-of-truth ACL definition. Apply via:
+//   tailscale up --accept-routes --advertise-tags=tag:server,tag:prod
+// Then push this file to the admin console or use the Tailscale API.
+//
+// Groups
+{
+  // Admin group — full access to production servers and internal services
+  "groups": {
+    "group:admin": [
+      "your-email@example.com",
+    ],
+    "group:ci": [
+      // CI runner identity — set when registering runner
+    ],
+  },
+
+  // Tags — assigned to devices, not users
+  "tagOwners": {
+    "tag:prod":           ["group:admin"],
+    "tag:server":         ["group:admin"],
+    "tag:pikvm":          ["group:admin"],
+    "tag:monitoring":     ["group:admin"],
+    "tag:ci":             ["group:admin"],
+    "tag:backup":         ["group:admin"],
+    "tag:exit-node":      ["group:admin"],
+    "tag:subnet-router":  ["group:admin"],
+  },
+
+  // ACLs
+  "acls": [
+    // Admin: full SSH and unrestricted access to production servers
+    {
+      "action": "accept",
+      "src":    ["group:admin"],
+      "dst":    ["tag:prod:*", "tag:server:*", "tag:pikvm:*"],
+    },
+
+    // Admin: access private service ports (Grafana, Prometheus, Traefik dashboard, etc.)
+    {
+      "action": "accept",
+      "src":    ["group:admin"],
+      "dst":    [
+        "tag:monitoring:80,443,3000,9090,9093,8080,8082,9100",
+        "tag:prod:80,443,8080",
+      ],
+    },
+
+    // CI: restricted access — deploy scripts only to server
+    {
+      "action": "accept",
+      "src":    ["tag:ci"],
+      "dst":    ["tag:prod:22,443"],
+    },
+
+    // Monitoring: allow monitoring nodes to scrape targets
+    {
+      "action": "accept",
+      "src":    ["tag:monitoring"],
+      "dst":    [
+        "tag:prod:80,443,8080,8082,9100,9090,9093",
+        "tag:server:80,443,9100",
+      ],
+    },
+
+    // Backup: allow backup nodes to connect to server for restic/SFTP
+    {
+      "action": "accept",
+      "src":    ["tag:backup"],
+      "dst":    ["tag:prod:22,443,9090"],
+    },
+
+    // Subnet router: allow admin to use advertised routes
+    {
+      "action": "accept",
+      "src":    ["group:admin"],
+      "dst":    ["tag:subnet-router:0/0"],
+    },
+
+    // Exit node: allow admin to route internet through exit nodes
+    {
+      "action": "accept",
+      "src":    ["group:admin"],
+      "dst":    ["tag:exit-node:*"],
+    },
+  ],
+
+  // SSH policy — Tailscale SSH connections
+  "ssh": [
+    // Admin: full SSH to production servers
+    {
+      "action": "check",
+      "src":    ["group:admin"],
+      "dst":    ["tag:prod:*"],
+      "users":  ["your-username"],
+    },
+    // CI: SSH deploy user only
+    {
+      "action": "check",
+      "src":    ["tag:ci"],
+      "dst":    ["tag:prod:*"],
+      "users":  ["deploy"],
+    },
+  ],
+
+  // Tests — ensure rules match expected behavior
+  "tests": [
+    // Admin can SSH to prod
+    {
+      "src":    "your-email@example.com",
+      "accept": ["tag:prod:22"],
+      "deny":   [],
+    },
+    // CI can SSH to prod as deploy user
+    {
+      "src":    "tag:ci",
+      "accept": ["tag:prod:22"],
+      "deny":   ["tag:prod:80"],
+    },
+    // Non-admin cannot reach prod
+    {
+      "src":    "tag:monitoring",
+      "accept": ["tag:prod:9090"],
+      "deny":   ["tag:prod:22", "tag:prod:443"],
+    },
+  ],
+}
