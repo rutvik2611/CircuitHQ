@@ -1,0 +1,121 @@
+# CircuitHQ — Authelia Authentication Stack
+# ===========================================
+# Forward-auth provider for Traefik. Protects admin dashboards and private services.
+# MFA (TOTP) enforced for all admin routes.
+# Redis-backed session storage.
+#
+# Architecture: Traefik → Authelia (forward-auth) → Protected App
+#               Authelia → Redis (sessions)
+#
+# Networks:
+#   circuithq-security  — Authelia ↔ Redis (internal auth communication)
+#   circuithq-proxy     — Authelia ↔ Traefik (forward auth requests)
+#
+# Secrets managed via SOPS (see secrets/production/authelia.sops.yaml)
+
+services:
+
+  # ── Redis (Session Storage) ────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: circuithq-authelia-redis
+    restart: unless-stopped
+
+    networks:
+      - circuithq-security
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── Authelia ───────────────────────────────────────────────────────────
+  authelia:
+    image: authelia/authelia:4.38
+    container_name: circuithq-authelia
+    restart: unless-stopped
+
+    networks:
+      - circuithq-proxy
+      - circuithq-security
+
+    volumes:
+      # Configuration files
+      - type: bind
+        source: ./authelia/configuration.yml
+        target: /config/configuration.yml
+        read_only: true
+      - type: bind
+        source: ./authelia/users_database.yml
+        target: /config/users_database.yml
+        read_only: true
+      - type: bind
+        source: ./authelia/access_rules.yml
+        target: /config/access_rules.yml
+        read_only: true
+
+      # SOPS-decrypted secrets (mounted at runtime by render-secrets.sh)
+      - type: bind
+        source: /etc/circuithq/secrets/authelia.env
+        target: /config/secrets.env
+        read_only: true
+
+    environment:
+      - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/config/secrets.env
+      - AUTHELIA_SESSION_SECRET_FILE=/config/secrets.env
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/config/secrets.env
+      - AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD_FILE=/config/secrets.env
+      - AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE=/config/secrets.env
+      - TZ=America/New_York
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "authelia", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    labels:
+      # Expose Authelia itself for health/status checks via Traefik
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.circuithq.internal`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls=true"
+      - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+      - "traefik.http.routers.authelia.middlewares=dashboard-auth@file"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  circuithq-proxy:
+    name: circuithq-proxy
+    external: true
+
+  circuithq-security:
+    name: circuithq-security
+    external: true
+
+volumes:
+  redis-data:
+    name: circuithq-redis-data
+    external: true

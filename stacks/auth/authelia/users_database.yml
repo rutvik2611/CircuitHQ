@@ -1,0 +1,33 @@
+# CircuitHQ — Authelia Users Database Template
+# ==============================================
+# File-based user database for Authelia.
+# Replace with SOPS-encrypted file in production.
+#
+# Password hashes are Argon2id. Generate with:
+#   docker run authelia/authelia:4.38 authelia hash-password 'your-password'
+#
+# See: https://www.authelia.com/reference/guides/passwords/
+#
+# IMPORTANT: This file is a template only. The production users_database.yml
+# is SOPS-encrypted and deployed via render-secrets.sh.
+
+users:
+  # ── Admin User ────────────────────────────────────────────────────────
+  admin:
+    disabled: false
+    displayname: "CircuitHQ Admin"
+    # Password hash generated at deploy time
+    password: "$argon2id$v=19$m=65536,t=3,p=4$...REPLACE_ME..."
+    email: admin@circuithq.internal
+    groups:
+      - admins
+      - users
+
+  # ── Example Regular User ─────────────────────────────────────────────
+  # user:
+  #   disabled: false
+  #   displayname: "Example User"
+  #   password: "$argon2id$v=19$m=65536,t=3,p=4$...REPLACE_ME..."
+  #   email: user@example.com
+  #   groups:
+  #     - users

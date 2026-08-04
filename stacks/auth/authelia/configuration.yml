@@ -1,0 +1,161 @@
+# CircuitHQ — Authelia Configuration Template
+# =============================================
+# See: https://www.authelia.com/configuration/
+#
+# Secrets are loaded via environment variable files (SOPS-decrypted).
+# Replace all placeholders before deployment.
+
+###############################################
+# Server
+###############################################
+server:
+  host: 0.0.0.0
+  port: 9091
+  path: ""
+  read_buffer_size: 4096
+  write_buffer_size: 4096
+  enable_pprof: false
+  enable_expvars: false
+
+###############################################
+# Logging
+###############################################
+log:
+  level: info                         # debug, info, warn, error
+  format: json                        # json, text
+
+###############################################
+# Theme
+###############################################
+theme: auto                           # light, dark, auto
+
+###############################################
+# Telemetry / Metrics
+###############################################
+telemetry:
+  metrics:
+    enabled: true
+    address: tcp://0.0.0.0:9959      # Prometheus scraping target
+
+###############################################
+# Authentication Backend
+###############################################
+# File-based authentication database (no LDAP dependency)
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2
+      iterations: 3
+      key_length: 32
+      salt_length: 16
+      memory: 64                      # MB
+      parallelism: 4
+
+###############################################
+# Password Policy
+###############################################
+password_policy:
+  standard:
+    enabled: true
+    min_length: 12
+    max_length: 0
+    require_uppercase: true
+    require_lowercase: true
+    require_number: true
+    require_special: true
+
+###############################################
+# Access Control
+###############################################
+access_control:
+  default_policy: deny                # Everything denied by default
+  rules:
+    # Rules loaded from external file
+    import: /config/access_rules.yml
+
+###############################################
+# Session (Redis-backed)
+###############################################
+session:
+  name: authelia_session
+  domain: circuithq.internal          # TODO: replace with your domain
+  same_site: lax
+  inactivity: 5m                      # Idle timeout
+  expiration: 1h                      # Absolute session lifetime
+  remember_me: 1w                     # "Remember me" cookie duration
+  redis:
+    host: redis
+    port: 6379
+    database_index: 0
+    # password: <SOPS-env>            # Set via AUTHELIA_SESSION_SECRET env var
+
+###############################################
+# Regulation (Brute-force Protection)
+###############################################
+regulation:
+  max_retries: 5                      # Failed attempts before ban
+  find_time: 2m                       # Window for counting failures
+  ban_time: 5m                        # Ban duration after max_retries
+
+###############################################
+# Storage (Local SQLite — single-node only)
+###############################################
+storage:
+  local:
+    path: /config/db.sqlite3
+
+###############################################
+# Notifier (SMTP — mandatory for password reset)
+###############################################
+notifier:
+  filesystem:
+    filename: /config/notifications.yml
+  # smtp:
+  #   host: smtp.example.com
+  #   port: 587
+  #   username: "admin@circuithq.internal"
+  #   password: ""                    # Set via AUTHELIA_NOTIFIER_SMTP_PASSWORD
+  #   sender: "authelia@circuithq.internal"
+  #   subject: "[CircuitHQ] {title}"
+  #   startup_check_address: "admin@circuithq.internal"
+  #   disable_require_tls: false
+  #   disable_html_emails: false
+  #   tls:
+  #     server_name: smtp.example.com
+  #     skip_verify: false
+  #     minimum_version: TLS1.2
+
+###############################################
+# Identity Validation
+###############################################
+identity_validation:
+  reset_password:
+    jwt_secret: ""                    # Set via AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET
+
+###############################################
+# Two-Factor / MFA
+###############################################
+totp:
+  issuer: CircuitHQ
+  period: 30                          # TOTP validity window (seconds)
+  skew: 1                             # Allow one period before/after
+  digits: 6
+  algorithm: sha1
+
+webauthn:
+  disable: false
+  enable_passkey_login: true
+  display_name: CircuitHQ
+  attestation_conveyance_preference: indirect
+  user_verification: preferred
+
+###############################################
+# Duo Push (Optional — second factor via mobile app)
+###############################################
+duo_api:
+  disable: true                       # Enable if Duo subscription available
+  # hostname: api-xxxxxxxx.duosecurity.com
+  # integration_key: ""
+  # secret_key: ""                    # Set via env
+  # enable_self_enrollment: false

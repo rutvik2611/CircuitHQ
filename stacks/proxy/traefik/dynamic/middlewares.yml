@@ -75,7 +75,7 @@ http:
         middlewares:
           - secHeaders
           - rateLimit
-          # - auth-forward          # TODO: enable after Phase 7 (Authelia)
+          - auth-forward
 
     # ── Retry ────────────────────────────────────────────────────────────
     # Allow a single retry on connection failures.

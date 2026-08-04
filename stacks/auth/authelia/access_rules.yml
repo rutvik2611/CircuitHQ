@@ -1,0 +1,51 @@
+# CircuitHQ — Authelia Access Rules
+# ====================================
+# Define which services require authentication and MFA.
+# Rules are evaluated top-down; first match wins.
+# Default policy is "deny" (set in configuration.yml).
+#
+# Action values:
+#   - deny               Block access (returns 403)
+#   - bypass             No authentication required
+#   - one_factor         Password-only (no MFA)
+#   - two_factor         Password + TOTP/WebAuthn
+
+access_rules:
+
+  # ── Allow access to Authelia itself ─────────────────────────────────
+  - domain: "auth.circuithq.internal"
+    policy: bypass                     # Login page must be accessible
+
+  # ── Public services (no auth) ──────────────────────────────────────
+  - domain:
+      - "status.circuithq.internal"    # Uptime Kuma (public status page)
+    policy: bypass
+
+  # ─── Admin dashboards (MFA required) ─────────────────────────────────
+  - domain:
+      - "traefik.circuithq.internal"   # Traefik dashboard
+      - "grafana.circuithq.internal"   # Grafana (Phase 8)
+      - "prometheus.circuithq.internal" # Prometheus (Phase 8)
+      - "loki.circuithq.internal"      # Loki (Phase 9)
+    policy: two_factor
+    subject:
+      - ["group:admins"]
+
+  # ── Private services (password-only, any authenticated user) ───────
+  - domain:
+      - "*.app.circuithq.internal"     # Wildcard for future user-facing apps
+    policy: one_factor
+    subject:
+      - ["group:users"]
+
+  # ── Tailscale-only services ─────────────────────────────────────────
+  # These are only accessible via Tailscale IP; Authelia still protects them
+  - domain:
+      - "*.internal.circuithq.internal"
+    policy: two_factor
+    subject:
+      - ["group:admins"]
+
+  # ── Catch-all: deny everything else ─────────────────────────────────
+  - domain: "*"
+    policy: deny
