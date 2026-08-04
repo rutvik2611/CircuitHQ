@@ -5,9 +5,9 @@
 .env.*
 !.env.example
 
-# Decrypted SOPS files
+# Decrypted SOPS files (rendered runtime .env files)
+.secrets-rendered/
 secrets/**/*.decrypted
-secrets/**/!*.sops.yaml
 
 # Age private keys
 age-key.txt

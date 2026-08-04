@@ -1,0 +1,73 @@
+#!/bin/bash
+# CircuitHQ — Decrypt SOPS Secrets to Runtime .env Files
+# ========================================================
+# Scans secrets/ for .sops.yaml files and decrypts them to .env files
+# with strict permissions (0600) for consumption by Docker Compose.
+#
+# Usage:
+#   ./scripts/deploy/render-secrets.sh              # all environments
+#   ENV=production ./scripts/deploy/render-secrets.sh
+#   ENV=staging    ./scripts/deploy/render-secrets.sh
+#
+# Prerequisites:
+#   - sops installed (brew install sops)
+#   - age private key at ~/.config/sops/age/keys.txt
+#   - .sops.yaml in repo root with matching public key
+#
+# Security:
+#   - Output files get 0600 permissions (owner read/write only)
+#   - Output files are .gitignore'd (secrets/**/*.decrypted)
+#   - Never commit output files
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ENV="${ENV:-all}"  # all, production, staging
+
+# Ensure sops is available
+if ! command -v sops &>/dev/null; then
+  echo "❌ sops not found. Install: brew install sops"
+  exit 1
+fi
+
+echo "=== Render Secrets: ENV=$ENV ==="
+echo ""
+
+render_dir() {
+  local dir="$1"
+  local env_name="$2"
+
+  if [ ! -d "$BASE_DIR/secrets/$dir" ]; then
+    return
+  fi
+
+  mkdir -p "$BASE_DIR/.secrets-rendered/$env_name"
+
+  for sops_file in "$BASE_DIR/secrets/$dir"/*.sops.yaml; do
+    if [ ! -f "$sops_file" ]; then
+      continue
+    fi
+
+    base_name="$(basename "$sops_file" .sops.yaml)"
+    output_file="$BASE_DIR/.secrets-rendered/$env_name/$base_name.env"
+
+    echo "▶️  Decrypting $dir/$base_name.sops.yaml -> .secrets-rendered/$env_name/$base_name.env"
+    sops --decrypt "$sops_file" > "$output_file"
+    chmod 0600 "$output_file"
+    echo "   ✅ $output_file (0600)"
+  done
+}
+
+if [ "$ENV" = "production" ] || [ "$ENV" = "all" ]; then
+  render_dir "production" "production"
+fi
+
+if [ "$ENV" = "staging" ] || [ "$ENV" = "all" ]; then
+  render_dir "staging" "staging"
+fi
+
+echo ""
+echo "✅ Secrets rendered to .secrets-rendered/"
+echo "   Reference these files in Docker Compose with:"
+echo '   env_file: .secrets-rendered/<env>/<service>.env'
