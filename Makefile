@@ -52,6 +52,12 @@ secrets-check:
 
 security-scan:
 	@echo "🔍 Running security scans..."
+	@if [ -f scripts/validate/validate-permissions.sh ]; then \
+		bash scripts/validate/validate-permissions.sh; \
+	fi
+	@if [ -f scripts/validate/validate-compose-security.sh ]; then \
+		bash scripts/validate/validate-compose-security.sh; \
+	fi
 	@if command -v trivy &>/dev/null; then \
 		trivy fs --scanners config,vuln --quiet . 2>/dev/null || true; \
 	fi
