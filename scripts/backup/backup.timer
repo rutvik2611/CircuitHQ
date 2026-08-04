@@ -1,0 +1,12 @@
+[Unit]
+Description=CircuitHQ Backup — daily schedule
+Requires=circuithq-backup.service
+
+[Timer]
+# Daily at 02:00 (system local time)
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target
