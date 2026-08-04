@@ -1,0 +1,105 @@
+# CircuitHQ — Traefik Static Configuration
+# ==========================================
+# Applied at startup. Changes require a restart.
+# See: https://doc.traefik.io/traefik/reference/static-configuration/file/
+
+# Global settings
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# Logging
+log:
+  level: INFO                       # DEBUG during troubleshooting
+  filePath: ""                      # stdout (Docker logs)
+
+accessLog:
+  filePath: ""                      # stdout (Docker logs)
+  format: json
+  filters:
+    statusCodes:
+      - "200-399"
+      - "400-499"
+      - "500-599"
+    retryAttempts: true
+    minDuration: "50ms"
+  fields:
+    defaultMode: keep
+    names:
+      ClientUsername: drop
+    headers:
+      defaultMode: keep
+      names:
+        Authorization: drop
+        Cookie: drop
+        X-Forwarded-For: keep
+        X-Real-Ip: keep
+        User-Agent: keep
+
+# API and Dashboard
+api:
+  dashboard: true
+  debug: false
+
+# Entrypoints
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+  traefik:
+    address: ":8080"
+
+# Providers
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false         # Key security rule
+    network: circuithq-proxy
+    swarmMode: false
+    swarmModeRefreshSeconds: 15
+    constraints: ""
+    watch: true
+
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Certificate resolvers (ACME / Let's Encrypt)
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"  # Staging for testing
+      email: "admin@circuithq.internal"                                     # TODO: replace with real email
+      storage: /etc/traefik/acme/acme.json
+      keyType: EC256
+      httpChallenge:
+        entryPoint: web
+
+# Ping healthcheck
+ping:
+  entryPoint: traefik
+
+# Metrics
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    entryPoint: traefik
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0

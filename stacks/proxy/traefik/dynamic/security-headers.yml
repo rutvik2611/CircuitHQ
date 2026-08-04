@@ -1,0 +1,70 @@
+# CircuitHQ — Security Headers Configuration
+# ============================================
+# Detailed security header definitions referenced by secHeaders middleware.
+# These are applied globally to all public-facing routes.
+#
+# Reference:
+#   https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
+#   https://securityheaders.com/
+#   https://csp-evaluator.withgoogle.com/
+
+http:
+  middlewares:
+
+    # ── Comprehensive Security Headers ──────────────────────────────────
+    secHeadersDetailed:
+      headers:
+        # Frame & Clickjacking Protection
+        frameDeny: true
+        customFrameOptionsValue: "SAMEORIGIN"
+
+        # SSL/TLS
+        sslRedirect: true
+        sslHost: ""                     # Use the request Host header
+        sslForceHost: true
+        stsSeconds: 31536000            # 1 year
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+        # Content-Type Protection
+        contentTypeNosniff: true
+
+        # XSS Protection
+        browserXssFilter: true
+        browserXssFilterMode: "block"
+
+        # Referrer Policy
+        referrerPolicy: "strict-origin-when-cross-origin"
+
+        # Permissions Policy (replaces Feature Policy)
+        permissionsPolicy: |
+          accelerometer=(),
+          autoplay=(self),
+          camera=(),
+          display-capture=(),
+          document-domain=(),
+          encrypted-media=(self),
+          fullscreen=(self),
+          geolocation=(),
+          gyroscope=(),
+          magnetometer=(),
+          microphone=(),
+          midi=(),
+          payment=(),
+          picture-in-picture=(),
+          publickey-credentials-get=(),
+          screen-wake-lock=(),
+          sync-xhr=(self),
+          usb=(),
+          web-share=(self),
+          xr-spatial-tracking=()
+
+        # Access Control
+        addVaryHeader: true
+
+        # Custom Headers
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+          X-Powered-By: ""                    # Remove server tech leak
+          Server: "CircuitHQ"                 # Minimal server header
+          X-Content-Type-Options: "nosniff"

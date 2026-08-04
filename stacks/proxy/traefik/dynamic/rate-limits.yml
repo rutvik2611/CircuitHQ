@@ -1,0 +1,55 @@
+# CircuitHQ — Rate Limit Configuration
+# ======================================
+# Rate limiting protects upstream services from excessive requests.
+# Applied globally via the public-chain middleware and can be overridden
+# per-route using router labels.
+#
+# Reference:
+#   https://doc.traefik.io/traefik/middlewares/ratelimit/
+
+http:
+  middlewares:
+
+    # ── Global Default Rate Limit ───────────────────────────────────────
+    # Applied to all routes in the public-chain middleware.
+    rateLimitGlobal:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 1                    # Single proxy hop depth
+
+    # ── Strict Rate Limit (for auth endpoints) ──────────────────────────
+    # Tighter limit for login, registration, password reset.
+    rateLimitStrict:
+      rateLimit:
+        average: 10
+        burst: 20
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    # ── API Rate Limit ──────────────────────────────────────────────────
+    # Moderate limit for API endpoints.
+    rateLimitAPI:
+      rateLimit:
+        average: 200
+        burst: 400
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 2                    # Two proxy hops (Cloudflare + Traefik)
+
+    # ── Streaming Rate Limit ────────────────────────────────────────────
+    # Generous limit for media/streaming endpoints.
+    rateLimitStreaming:
+      rateLimit:
+        average: 50
+        burst: 100
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 1

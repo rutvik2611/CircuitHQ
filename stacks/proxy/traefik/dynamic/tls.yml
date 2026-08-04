@@ -1,0 +1,44 @@
+# CircuitHQ — Traefik TLS Options & Certificate Configuration
+# ============================================================
+# Defines TLS cipher suites, protocol versions, and ACME certificate defaults.
+# See: https://doc.traefik.io/traefik/https/tls/
+
+tls:
+
+  # ── Default TLS Options ──────────────────────────────────────────────
+  options:
+    default:
+      minVersion: VersionTLS12
+      maxVersion: VersionTLS13
+      cipherSuites:
+        - TLS_AES_128_GCM_SHA256                  # TLS 1.3 (AEAD)
+        - TLS_AES_256_GCM_SHA384                  # TLS 1.3 (AEAD)
+        - TLS_CHACHA20_POLY1305_SHA256            # TLS 1.3 (AEAD)
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 # TLS 1.2
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 # TLS 1.2
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   # TLS 1.2
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384   # TLS 1.2
+      sniStrict: false
+      preferServerCipherSuites: true
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+        - CurveP256
+
+    # Modern profile — TLS 1.3 only, ECDSA preferred
+    modern:
+      minVersion: VersionTLS13
+      sniStrict: true
+      preferServerCipherSuites: true
+
+  # ── Certificate Store ────────────────────────────────────────────────
+  stores:
+    default:
+      defaultCertificate:
+        # Fallback self-signed cert from ACME storage
+        # When no matching SNI provider is found, uses the default below
+        certFile: ""
+
+  # ── ACME Certificate Resolver ────────────────────────────────────────
+  # certificatesResolvers are defined in static.yml under the letsencrypt key.
+  # Per-router TLS config labels reference certResolver=letsencrypt.

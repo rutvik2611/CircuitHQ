@@ -1,0 +1,85 @@
+# CircuitHQ — Traefik Dynamic Middleware Configuration
+# ======================================================
+# Reusable middleware chains referenced by router label declarations.
+# See: https://doc.traefik.io/traefik/middlewares/overview/
+
+http:
+  middlewares:
+
+    # ── Security Headers ──────────────────────────────────────────────────
+    # Broad-spectrum security headers for all public routes.
+    # Detailed sub-option definitions live in security-headers.yml.
+    secHeaders:
+      plugin:
+        headers:
+          frameDeny: true
+          sslRedirect: true
+          stsSeconds: 31536000
+          stsIncludeSubdomains: true
+          stsPreload: true
+          contentTypeNosniff: true
+          browserXssFilter: true
+          customFrameOptionsValue: "SAMEORIGIN"
+          referrerPolicy: "strict-origin-when-cross-origin"
+          permissionsPolicy: |
+            camera=(), microphone=(), geolocation=(), interest-cohort=()
+
+    # ── Rate Limiting ────────────────────────────────────────────────────
+    # Default rate limit applied to all public-facing routes.
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    # ── Authelia Forward Auth (Placeholder) ──────────────────────────────
+    # Enabled per-route with label chains once Authelia stack is deployed.
+    auth-forward:
+      forwardAuth:
+        address: "http://circuithq-authelia:9091/api/authz/forward-auth"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - Remote-User
+          - Remote-Groups
+          - Remote-Name
+          - Remote-Email
+
+    # ── Dashboard Authentication ─────────────────────────────────────────
+    # Restricts the Traefik dashboard to Tailscale / management IPs.
+    dashboard-auth:
+      ipWhiteList:
+        sourceRange:
+          - "100.64.0.0/10"          # Tailscale subnet
+          - "10.0.0.0/8"             # Private LAN
+          - "172.16.0.0/12"          # Docker internal
+          - "127.0.0.1/32"           # Localhost
+        ipStrategy:
+          depth: 1
+
+    # ── Chain: Default Public Security ───────────────────────────────────
+    # Applied to all externally-facing routes.
+    public-chain:
+      chain:
+        middlewares:
+          - secHeaders
+          - rateLimit
+
+    # ── Chain: Authenticated Routes ──────────────────────────────────────
+    # Applied to routes that require Authelia authentication.
+    # Uncomment the auth-forward line once Authelia is deployed.
+    auth-chain:
+      chain:
+        middlewares:
+          - secHeaders
+          - rateLimit
+          # - auth-forward          # TODO: enable after Phase 7 (Authelia)
+
+    # ── Retry ────────────────────────────────────────────────────────────
+    # Allow a single retry on connection failures.
+    retry:
+      retry:
+        attempts: 1
+        initialInterval: 500ms
