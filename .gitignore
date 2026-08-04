@@ -1,0 +1,54 @@
+# ---------------------------
+# Secrets — never commit these
+# ---------------------------
+.env
+.env.*
+!.env.example
+
+# Decrypted SOPS files
+secrets/**/*.decrypted
+secrets/**/!*.sops.yaml
+
+# Age private keys
+age-key.txt
+keys.txt
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Backup artifacts
+backups/
+*.bak
+*.tmp
+
+# Docker build artifacts
+artifacts/
+*.tar
+*.gz
+
+# CI artifacts
+ci-artifacts/
+
+# Local test containers
+test-containers/
+
+# Release builds
+releases/*.tar.gz
+releases/*.zip
+
+# Python/Node/npm if used
+__pycache__/
+*.pyc
+node_modules/

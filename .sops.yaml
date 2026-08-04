@@ -1,0 +1,6 @@
+---
+creation_rules:
+  - path_regex: secrets/production/.*\.sops\.yaml
+    age: age1placeholderpublickeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  - path_regex: secrets/staging/.*\.sops\.yaml
+    age: age1placeholderpublickeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
