@@ -90,12 +90,11 @@ services:
       start_period: 30s
 
     labels:
-      # Expose Authelia itself for health/status checks via Traefik
+      # Expose Authelia itself for login / health — must be publicly reachable
       - "traefik.enable=true"
       - "traefik.http.routers.authelia.rule=Host(`auth.m3.dev.rutvik2611.com`)"
       - "traefik.http.routers.authelia.entrypoints=web"
       - "traefik.http.services.authelia.loadbalancer.server.port=9091"
-      - "traefik.http.routers.authelia.middlewares=dashboard-auth@file"
 
     logging:
       driver: "json-file"
