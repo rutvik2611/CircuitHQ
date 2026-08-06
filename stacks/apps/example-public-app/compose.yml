@@ -14,12 +14,9 @@ services:
       - circuithq-proxy
       - circuithq-shared
 
+    # whoami is a bare Go binary with no wget/curl/sh — disable healthcheck
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:80"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      disable: true
 
     labels:
       # Enable Traefik routing — MUST be set for public exposure
